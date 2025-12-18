@@ -7,6 +7,8 @@ export async function ensureSchema() {
   await sql`CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    email TEXT,
+    role TEXT DEFAULT 'EMPLOYEE',
     job_title TEXT,
     department TEXT,
     date_joined TEXT,
@@ -75,6 +77,8 @@ export async function getAllData() {
   const employees = empRows.map(e => ({
     id: e.id,
     name: e.name,
+    email: e.email,
+    role: e.role || 'EMPLOYEE',
     jobTitle: e.job_title,
     department: e.department,
     dateJoined: e.date_joined,

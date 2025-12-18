@@ -211,47 +211,50 @@
   function bindEmployeeForm(){
     $('#employeeForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const id = $('#employeeId').value || nid();
-      const isNew = !DB.employees.some(x=>x.id===id);
-      const emp = isNew ? { id } : getEmployee(id);
-      emp.name = $('#empName').value.trim();
-      emp.jobTitle = $('#empTitle').value.trim();
-      emp.department = $('#empDept').value.trim();
-      emp.dateJoined = $('#empJoined').value || '';
-      
-      // User fields
-      const email = $('#empEmail').value.trim();
-      const role = $('#empRole').value;
-      
-      const entYear = Number($('#empEntYear').value)||state.year;
-      const carry = Number($('#empCarry').value)||0;
-      const current = Number($('#empCurrent').value)||0;
-      setEntitlement(emp, entYear, carry, current);
-      if(isNew) DB.employees.push(emp);
-      saveDB(DB);
-      
-      // Save employee
-      await apiSaveEmployee(emp, { carry, current });
-      
-      // Save or update user if email is provided
-      if(email){
-        try{
-          await apiCreateUser(email, emp.name, role);
-        }catch(e){
-          // User might already exist, try updating instead
-          if(e.message.includes('already exists')){
-            // Find user by email and update
-            console.log('User already exists, skipping user creation');
-          }else{
-            console.error('User save error:', e);
-            alert('Warning: Employee saved but user creation failed: ' + e.message);
+      try{
+        const id = $('#employeeId').value || nid();
+        const isNew = !DB.employees.some(x=>x.id===id);
+        const emp = isNew ? { id } : getEmployee(id);
+        emp.name = $('#empName').value.trim();
+        emp.email = $('#empEmail').value.trim();
+        emp.role = $('#empRole').value;
+        emp.jobTitle = $('#empTitle').value.trim();
+        emp.department = $('#empDept').value.trim();
+        emp.dateJoined = $('#empJoined').value || '';
+        
+        const entYear = Number($('#empEntYear').value)||state.year;
+        const carry = Number($('#empCarry').value)||0;
+        const current = Number($('#empCurrent').value)||0;
+        setEntitlement(emp, entYear, carry, current);
+        if(isNew) DB.employees.push(emp);
+        saveDB(DB);
+        
+        // Save employee
+        await apiSaveEmployee(emp, { carry, current });
+        
+        // Save or update user if email is provided
+        if(emp.email){
+          try{
+            await apiCreateUser(emp.email, emp.name, emp.role);
+          }catch(e){
+            // User might already exist, try updating instead
+            if(e.message.includes('already exists')){
+              // Find user by email and update
+              console.log('User already exists, skipping user creation');
+            }else{
+              console.error('User save error:', e);
+              alert('Warning: Employee saved but user creation failed: ' + e.message);
+            }
           }
         }
+        
+        await refreshFromServer();
+        fillEmployeeForm(null);
+        alert('Employee & User saved.');
+      }catch(err){
+        console.error('Form submission error:', err);
+        alert('Error saving: ' + err.message);
       }
-      
-      await refreshFromServer();
-      fillEmployeeForm(null);
-      alert('Employee & User saved.');
     });
     $('#employeeCancelBtn').addEventListener('click', ()=> fillEmployeeForm(null));
 
