@@ -183,6 +183,41 @@
     })
   }
 
+  // Year tabs
+  function bindYearTabs(){
+    $$('.year-tab-nav').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const year = Number(btn.dataset.year);
+        state.year = year;
+        $('#yearInput').value = year;
+        
+        // Update year tab active state
+        $$('.year-tab-nav').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update year selector buttons
+        updateYearTabs();
+        
+        // Re-render all content with new year
+        $('#reportYear').value = year;
+        $('#empEntYear').value = year;
+        renderEmployees();
+        renderLeaves();
+        buildReportCard();
+      });
+    });
+    updateYearTabsNav();
+  }
+  function updateYearTabsNav(){
+    $$('.year-tab-nav').forEach(btn=>{
+      if(Number(btn.dataset.year)===state.year){
+        btn.classList.add('active');
+      }else{
+        btn.classList.remove('active');
+      }
+    });
+  }
+
   // Employees UI
   function renderEmployees(){
     const tbody = $('#employeesTable tbody');
@@ -751,6 +786,7 @@
 
   async function init(){
     bindTabs();
+    bindYearTabs();
     bindYear();
     bindEmployeeForm();
     bindLeaveForm();

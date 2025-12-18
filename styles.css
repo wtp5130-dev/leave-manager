@@ -65,6 +65,11 @@ button.danger{background:var(--danger);border-color:#b91c1c}
 .tab{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 12px;color:var(--muted)}
 .tab.active{color:var(--text);background:#0b1220}
 
+.year-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:#0a0e14}
+.year-tab-nav{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;color:var(--muted);font-weight:600;cursor:pointer;transition:all 0.2s}
+.year-tab-nav:hover{border-color:var(--primary);color:var(--text)}
+.year-tab-nav.active{background:var(--primary);color:white;border-color:var(--primary)}
+
 main{padding:16px;display:grid;gap:16px}
 .panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
