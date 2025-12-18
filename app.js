@@ -31,41 +31,34 @@
   let DB = loadDB();
   let state = { year: new Date().getFullYear() };
 
-  // Cloud sync helpers (Vercel Blob via API routes)
-  async function cloudSave(docId, data){
-    const res = await fetch(`/api/save?id=${encodeURIComponent(docId)}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data)
-    });
-    if(!res.ok) throw new Error('Cloud save failed');
-    return res.json();
+  // Database API helpers
+  async function apiGetAll(){
+    const r = await fetch('/api/data');
+    if(!r.ok) throw new Error('Load failed');
+    return r.json();
   }
-  async function cloudLoad(docId){
-    const res = await fetch(`/api/load?id=${encodeURIComponent(docId)}`);
-    if(!res.ok) throw new Error('Cloud load failed');
-    return res.json();
+  async function apiSaveEmployee(emp, ent){
+    const r = await fetch('/api/employee', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:emp.id, name:emp.name, jobTitle:emp.jobTitle, department:emp.department, dateJoined:emp.dateJoined, entitlement: ent ? {year: state.year, ...ent} : undefined }) });
+    if(!r.ok) throw new Error('Employee save failed');
   }
-  async function cloudSync(docId){
-    // If remote exists and is newer, replace local; else upload local
-    try{
-      const remote = await cloudLoad(docId);
-      const rAt = remote?.meta?.updatedAt || 0;
-      const lAt = DB?.meta?.updatedAt || 0;
-      if(rAt > lAt){ DB = remote; saveDB(DB); renderAll(); return { action:'pulled' }; }
-      await cloudSave(docId, DB); return { action:'pushed' };
-    }catch(err){
-      // If not found, push local
-      await cloudSave(docId, DB); return { action:'created' };
-    }
+  async function apiDeleteEmployee(id){ const r = await fetch(`/api/employee-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Employee delete failed'); }
+  async function apiSaveLeave(l){ const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) }); if(!r.ok) throw new Error('Leave save failed'); }
+  async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
+  async function apiSetHolidays(dates){ const r = await fetch('/api/holidays-set', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates }) }); if(!r.ok) throw new Error('Holidays set failed'); }
+
+  async function refreshFromServer(){
+    const data = await apiGetAll();
+    DB = { meta:{updatedAt:Date.now()}, ...data };
+    saveDB(DB);
+    renderAll();
   }
 
   // Auto sync helpers
-  const getDocId = () => (localStorage.getItem(DOC_ID_KEY) || document.getElementById('cloudDocId')?.value || 'default').trim() || 'default';
-  const setDocId = (id) => { localStorage.setItem(DOC_ID_KEY, id); const el = document.getElementById('cloudDocId'); if(el) el.value = id; };
   let autoTimer = null, debounceTimer = null;
   function scheduleDebouncedSync(){
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async ()=>{
-      try{ setStatus('Syncing...'); const res = await cloudSync(getDocId()); setStatus(`Synced (${res.action}).`); }
+      try{ setStatus('Syncing...'); await refreshFromServer(); setStatus('Synced.'); }
       catch(e){ console.error(e); setStatus('Sync error'); }
     }, 1200);
   }
@@ -180,7 +173,7 @@
     $('#empCurrent').value = ent.current || 0;
   }
   function bindEmployeeForm(){
-    $('#employeeForm').addEventListener('submit', (e)=>{
+    $('#employeeForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
       const id = $('#employeeId').value || nid();
       const isNew = !DB.employees.some(x=>x.id===id);
@@ -195,9 +188,9 @@
       setEntitlement(emp, entYear, carry, current);
       if(isNew) DB.employees.push(emp);
       saveDB(DB);
+      await apiSaveEmployee(emp, { carry, current });
+      await refreshFromServer();
       fillEmployeeForm(null);
-      renderEmployees();
-      renderEmployeeOptions();
       alert('Employee saved.');
     });
     $('#employeeCancelBtn').addEventListener('click', ()=> fillEmployeeForm(null));
@@ -211,7 +204,9 @@
         if(confirm('Delete employee and related leaves?')){
           DB.leaves = DB.leaves.filter(l=>l.employeeId!==id);
           DB.employees = DB.employees.filter(e=>e.id!==id);
-          saveDB(DB); renderEmployees(); renderLeaves(); renderEmployeeOptions();
+          saveDB(DB);
+          await apiDeleteEmployee(id);
+          await refreshFromServer();
         }
       }
     });
@@ -239,7 +234,7 @@
     $('#leaveTo').addEventListener('change', recomputeLeaveDays);
     $('#leaveType').addEventListener('change', recomputeLeaveDays);
 
-    $('#leaveForm').addEventListener('submit', (e)=>{
+    $('#leaveForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
       const id = $('#leaveId').value || nid();
       const isNew = !DB.leaves.some(x=>x.id===id);
@@ -255,8 +250,9 @@
       entry.reason = $('#leaveReason').value.trim();
       if(isNew) DB.leaves.push(entry);
       saveDB(DB);
+      await apiSaveLeave(entry);
+      await refreshFromServer();
       $('#leaveForm').reset(); $('#leaveId').value='';
-      renderLeaves(); renderEmployees(); buildReportCard();
       alert('Leave saved.');
     });
 
@@ -320,7 +316,8 @@
       if(act==='del'){
         if(confirm('Delete this leave entry?')){
           DB.leaves = DB.leaves.filter(x=>x.id!==id); saveDB(DB);
-          renderLeaves(); renderEmployees(); buildReportCard();
+          await apiDeleteLeave(id);
+          await refreshFromServer();
         }
       }
       if(act==='approve' || act==='reject'){
@@ -330,7 +327,7 @@
         l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
         l.approvedBy = user.name||'Manager';
         l.approvedAt = today();
-        saveDB(DB); renderLeaves(); buildReportCard();
+        saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
       }
     });
     $('#filterEmployee').addEventListener('change', renderLeaves);
@@ -486,7 +483,7 @@
     $('#holAddBtn').addEventListener('click', ()=>{
       const d = $('#holAddDate').value; if(!d) return;
       if(!DB.holidays.includes(d)) DB.holidays.push(d);
-      saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+      saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
     $('#fetchHolidays').addEventListener('click', async ()=>{
       const year = Number($('#holYear').value)||state.year; const cc = ($('#holCountry').value||'').toUpperCase();
@@ -499,58 +496,29 @@
         const set = new Set(DB.holidays||[]);
         dates.forEach(d=>set.add(d));
         DB.holidays = Array.from(set).sort();
-        saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+        saveDB(DB); await apiSetHolidays(DB.holidays); await refreshFromServer();
       }catch(err){ alert('Could not fetch holidays. Check the country code or try later.'); }
     });
     $('#holidaysTable').addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
       if(btn.dataset.act==='del-hol'){
-        const d = btn.dataset.date; DB.holidays = (DB.holidays||[]).filter(x=>x!==d); saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+        const d = btn.dataset.date; DB.holidays = (DB.holidays||[]).filter(x=>x!==d); saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
       }
     });
   }
 
-  // Cloud SYNC UI
+  // Sync UI (uses DB now)
   function bindCloudSync(){
-    const syncBtn = document.getElementById('cloudSaveBtn'); // repurpose as Sync
-    const loadBtn = document.getElementById('cloudLoadBtn'); // hide
-    if(loadBtn) loadBtn.style.display = 'none';
-    if(syncBtn){
-      syncBtn.textContent = 'Sync';
-      syncBtn.addEventListener('click', ()=> scheduleDebouncedSync('manual'));
-    }
-    // Persist doc id and trigger sync on change
-    const idInput = document.getElementById('cloudDocId');
-    const savedId = localStorage.getItem(DOC_ID_KEY) || 'default';
-    if(idInput) idInput.value = savedId;
-    idInput?.addEventListener('change', ()=>{ setDocId(idInput.value.trim()||'default'); scheduleDebouncedSync('docid-change'); });
+    const loadBtn = document.getElementById('cloudLoadBtn'); if(loadBtn) loadBtn.style.display = 'none';
+    const idInput = document.getElementById('cloudDocId'); if(idInput) idInput.style.display = 'none';
+    const syncBtn = document.getElementById('cloudSaveBtn');
+    if(syncBtn){ syncBtn.textContent = 'Sync'; syncBtn.addEventListener('click', ()=> scheduleDebouncedSync('manual')); }
 
     // auto sync cycle + online/visibility awareness
     startAutoSync();
     window.addEventListener('online', ()=> scheduleDebouncedSync('online'));
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) scheduleDebouncedSync('tab-focus'); });
-    // cross-tab localStorage updates
     window.addEventListener('storage', (e)=>{ if(e.key===STORE_KEY) { DB = loadDB(); renderAll(); scheduleDebouncedSync('storage'); } });
-  }
-  // Cloud controls
-  function bindCloudSync(){
-    const status = (msg) => { const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; };
-    const getId = () => (document.getElementById('cloudDocId')?.value||'default').trim() || 'default';
-
-    const loadBtn = document.getElementById('cloudLoadBtn');
-    const saveBtn = document.getElementById('cloudSaveBtn');
-    if(loadBtn){
-      loadBtn.addEventListener('click', async ()=>{
-        try{ status('Loading...'); const data = await cloudLoad(getId()); DB = data; saveDB(DB); renderAll(); status('Loaded from cloud'); }
-        catch(e){ console.error(e); status('Load failed'); alert('Cloud load failed. Configure Vercel functions and try again.'); }
-      });
-    }
-    if(saveBtn){
-      saveBtn.addEventListener('click', async ()=>{
-        try{ status('Saving...'); await cloudSave(getId(), DB); status('Saved to cloud'); }
-        catch(e){ console.error(e); status('Save failed'); alert('Cloud save failed. Configure Vercel functions and try again.'); }
-      });
-    }
   }
 
   function renderAll(){

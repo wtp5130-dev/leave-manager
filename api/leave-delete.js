@@ -1,0 +1,16 @@
+import { sql } from '@vercel/postgres';
+import { ensureSchema } from './db';
+
+export const config = { runtime: 'nodejs' };
+
+export default async function handler(req, res) {
+  try {
+    await ensureSchema();
+    const id = (req.query?.id||'').toString();
+    if (!id) return res.status(400).json({ ok: false, error: 'id required' });
+    await sql`DELETE FROM leaves WHERE id=${id}`;
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}

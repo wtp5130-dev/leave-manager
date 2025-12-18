@@ -14,8 +14,7 @@ Key features
 - Import/Export JSON backup
 
 Cloud sync (Vercel Blob)
-- Buttons in the header let you Save/Load the full dataset to/from the cloud using an ID (default).
-- Data is stored as a single JSON file in Vercel Blob storage.
+Deprecated: the app now uses a database. The Sync button refreshes from the server.
 
 Deploy to GitHub + Vercel
 1) Initialize git and push to GitHub
@@ -28,8 +27,8 @@ Deploy to GitHub + Vercel
 		 - git remote add origin https://github.com/<you>/leave-manager.git
 		 - git push -u origin main
 2) Import the repo in Vercel (New Project → Import from GitHub). Framework: “Other” (Static).
-3) On first deploy, Vercel will prompt to enable Blob storage. Add the environment variable it suggests (BLOB_READ_WRITE_TOKEN) in Project → Settings → Environment Variables.
-4) Redeploy. Use the header’s Load/Save buttons to sync data by a chosen document ID (e.g., "default").
+3) Add Vercel Postgres: In Vercel → Storage → Postgres → Create and Link to this project. Vercel will add POSTGRES_URL environment variables automatically.
+4) Redeploy. The app will read/write via API routes to the database. Use Sync to pull latest.
 
 Notes on privacy
 - The demo config stores blobs as public for simplicity. Switch to private access in api/save.js and implement signed downloads if you need privacy.
