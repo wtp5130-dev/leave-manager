@@ -1,0 +1,12 @@
+{
+  "name": "leave-manager",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve -l 5173"
+  },
+  "dependencies": {
+    "@vercel/blob": "^0.24.0"
+  }
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leave Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M7 3h10a2 2 0 0 1 2 2v14l-7-3-7 3V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+      </svg>
+      <h1>Staff Leave Manager</h1>
+    </div>
+    <div class="header-actions">
+      <label class="year-picker">Year
+        <input id="yearInput" type="number" min="2000" max="2100" step="1" />
+      </label>
+      <button id="exportBtn" class="ghost">Export JSON</button>
+      <label class="import">
+        <input id="importInput" type="file" accept="application/json" hidden />
+        <span class="button ghost" id="importBtn">Import JSON</span>
+      </label>
+      <div class="cloud">
+        <input id="cloudDocId" placeholder="cloud doc id" value="default" />
+        <button id="cloudLoadBtn" class="ghost" title="Load from cloud">Load</button>
+        <button id="cloudSaveBtn" class="ghost" title="Save to cloud">Save</button>
+        <small id="cloudStatus" style="color:var(--muted)"></small>
+      </div>
+      <button id="printCardBtn" class="primary">Print Card</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="employees" role="tab">Employees</button>
+    <button class="tab" data-tab="leaves" role="tab">Leaves</button>
+    <button class="tab" data-tab="reports" role="tab">Report</button>
+  </nav>
+
+  <main>
+    <!-- Employees -->
+    <section id="tab-employees" class="tab-content active" aria-labelledby="Employees">
+      <div class="panel">
+        <h2>Add / Edit Employee</h2>
+        <form id="employeeForm" class="grid">
+          <input type="hidden" id="employeeId" />
+          <label>Name<input id="empName" required /></label>
+          <label>Job Title<input id="empTitle" /></label>
+          <label>Department<input id="empDept" /></label>
+          <label>Date Joined<input id="empJoined" type="date" /></label>
+          <div class="grid-span-2"></div>
+          <h3 class="grid-span-2">Annual Leave Entitlement</h3>
+          <label>Year<input id="empEntYear" type="number" min="2000" max="2100" /></label>
+          <label>Carry Forward (days)<input id="empCarry" type="number" step="0.5" min="0" /></label>
+          <label>Current Year (days)<input id="empCurrent" type="number" step="0.5" min="0" /></label>
+          <div class="form-actions grid-span-2">
+            <button type="submit" class="primary">Save Employee</button>
+            <button type="reset" id="employeeCancelBtn" class="ghost">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Employees</h2>
+          <div class="search-box"><input id="employeeSearch" placeholder="Search employees..." /></div>
+        </div>
+        <div class="table-wrap">
+          <table id="employeesTable" class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Job Title</th>
+                <th>Dept</th>
+                <th>Date Joined</th>
+                <th>Annual Entitlement</th>
+                <th>Annual Taken</th>
+                <th>Balance</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leaves -->
+    <section id="tab-leaves" class="tab-content" aria-labelledby="Leaves">
+      <div class="panel">
+        <h2>New Leave</h2>
+        <form id="leaveForm" class="grid">
+          <input type="hidden" id="leaveId" />
+          <label>Employee<select id="leaveEmployee" required></select></label>
+          <label>Type
+            <select id="leaveType" required>
+              <option value="ANNUAL">Annual Leave</option>
+              <option value="SL">Sick Leave (SL)</option>
+              <option value="HL">Hospitalisation (HL)</option>
+              <option value="TC">Time Chit (TC)</option>
+              <option value="MATERNITY">Maternity</option>
+              <option value="PATERNITY">Paternity</option>
+              <option value="MARRIAGE">Marriage</option>
+              <option value="COMPASSIONATE">Compassionate</option>
+            </select>
+          </label>
+          <label>Application Date<input id="leaveApplied" type="date" /></label>
+          <label>From<input id="leaveFrom" type="date" required /></label>
+          <label>To<input id="leaveTo" type="date" required /></label>
+          <label>Working Days (auto)<input id="leaveDays" type="number" step="0.5" min="0" readonly /></label>
+          <label class="grid-span-2">Reason<textarea id="leaveReason" rows="2" placeholder="Optional"></textarea></label>
+          <div class="form-actions grid-span-2">
+            <button type="submit" class="primary">Save Leave</button>
+            <button type="reset" id="leaveCancelBtn" class="ghost">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>All Leaves</h2>
+          <div class="filters">
+            <select id="filterEmployee"></select>
+            <select id="filterType">
+              <option value="">All Types</option>
+              <option value="ANNUAL">Annual</option>
+              <option value="SL">SL</option>
+              <option value="HL">HL</option>
+              <option value="TC">TC</option>
+              <option value="MATERNITY">Maternity</option>
+              <option value="PATERNITY">Paternity</option>
+              <option value="MARRIAGE">Marriage</option>
+              <option value="COMPASSIONATE">Compassionate</option>
+            </select>
+            <input id="filterSearch" placeholder="Search reason..." />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="leavesTable" class="table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Type</th>
+                <th>Applied</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Days</th>
+                <th>Reason</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reports -->
+    <section id="tab-reports" class="tab-content" aria-labelledby="Report">
+      <div class="panel">
+        <h2>Leave Card</h2>
+        <div class="controls">
+          <label>Employee<select id="reportEmployee"></select></label>
+          <label>Year<input id="reportYear" type="number" min="2000" max="2100" /></label>
+          <button id="refreshReport" class="ghost">Refresh</button>
+          <button id="printBtn" class="primary">Print</button>
+        </div>
+        <div id="cardContainer" class="card-container">
+          <!-- Generated content will render here -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small>Leave Manager • Local-only demo. Use Export for backups.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
