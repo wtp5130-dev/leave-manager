@@ -42,7 +42,14 @@
     if(!r.ok) throw new Error('Employee save failed');
   }
   async function apiDeleteEmployee(id){ const r = await fetch(`/api/employee-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Employee delete failed'); }
-  async function apiSaveLeave(l){ const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) }); if(!r.ok) throw new Error('Leave save failed'); }
+  async function apiSaveLeave(l){
+    const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) });
+    if(!r.ok){
+      try{ const j = await r.json(); throw new Error(j?.error || 'Leave save failed'); }
+      catch{ throw new Error('Leave save failed'); }
+    }
+    return r.json().catch(()=>({ ok:true }));
+  }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
   async function apiSetHolidays(dates){ const r = await fetch('/api/holidays-set', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates }) }); if(!r.ok) throw new Error('Holidays set failed'); }
   
