@@ -417,13 +417,22 @@
         }
       }
       if(act==='approve' || act==='reject'){
-        const l = DB.leaves.find(x=>x.id===id); if(!l) return;
-        const user = getCurrentUser();
-        if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
-        l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
-        l.approvedBy = user.name||'Manager';
-        l.approvedAt = today();
-        saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+        try{
+          console.log('Approve/Reject action triggered:', act);
+          const l = DB.leaves.find(x=>x.id===id); if(!l) { console.error('Leave not found:', id); return; }
+          const user = getCurrentUser();
+          console.log('Current user:', user);
+          if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
+          l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
+          l.approvedBy = user.name||'Manager';
+          l.approvedAt = today();
+          console.log('Updating leave status to:', l.status);
+          saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+          alert(`Leave ${act}ed successfully.`);
+        }catch(err){
+          console.error('Approve/Reject error:', err);
+          alert(`Error ${act}ing leave: ${err?.message || 'Unknown error'}`);
+        }
       }
     });
     $('#filterEmployee').addEventListener('change', renderLeaves);
