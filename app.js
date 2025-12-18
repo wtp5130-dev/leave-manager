@@ -167,7 +167,7 @@
   function getCarryForwardBalance(empId, year){
     // Calculate unused balance from given year that should carry to next year
     const totals = annualTotalsFor(empId, year);
-    return Math.max(0, totals.balance); // Only carry forward positive balance
+    return Math.min(5, Math.max(0, totals.balance)); // Cap at 5 days maximum
   }
 
   // Tabs
