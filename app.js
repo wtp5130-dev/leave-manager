@@ -152,7 +152,7 @@
   }
   function annualTotalsFor(empId, year){
     const totalDays = DB.leaves
-      .filter(l => l.employeeId===empId && l.type==='ANNUAL')
+      .filter(l => l.employeeId===empId && l.type==='ANNUAL' && (l.status==='APPROVED' || l.status===undefined))
       .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
     const ent = getEntitlement(getEmployee(empId), year);
     const entitlement = (ent.carry||0)+(ent.current||0);
@@ -161,7 +161,7 @@
   }
   function totalsByType(empId, year, type){
     return DB.leaves
-      .filter(l => l.employeeId===empId && l.type===type)
+      .filter(l => l.employeeId===empId && l.type===type && (l.status==='APPROVED' || l.status===undefined))
       .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
   }
 
@@ -457,18 +457,20 @@
       .sort((a,b)=> a.from.localeCompare(b.from));
 
     let runningBalance = (ent.carry||0)+(ent.current||0);
-    const annualRows = annual.map(l =>{
-      const daysInYear = workingDaysInYear(l.from,l.to,year);
-      runningBalance -= daysInYear;
-      return `<tr>
-        <td>${l.applied||''}</td>
-        <td>${l.from}</td>
-        <td>${l.to}</td>
-        <td>${daysInYear}</td>
-        <td>${Math.max(runningBalance,0)}</td>
-        <td>${l.reason||''}</td>
-      </tr>`;
-    }).join('');
+    const annualRows = annual
+      .filter(l => l.status==='APPROVED' || l.status===undefined)
+      .map(l =>{
+        const daysInYear = workingDaysInYear(l.from,l.to,year);
+        runningBalance -= daysInYear;
+        return `<tr>
+          <td>${l.applied||''}</td>
+          <td>${l.from}</td>
+          <td>${l.to}</td>
+          <td>${daysInYear}</td>
+          <td>${Math.max(runningBalance,0)}</td>
+          <td>${l.reason||''}</td>
+        </tr>`;
+      }).join('');
 
     const sl = totalsByType(empId, year, 'SL');
     const hl = totalsByType(empId, year, 'HL');
