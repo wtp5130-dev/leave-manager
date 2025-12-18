@@ -193,14 +193,24 @@
         if(balance > 0){
           const ent = getEntitlement(emp, toYear);
           const currentCarry = ent.carry||0;
-          const newCarry = currentCarry + balance;
-          console.log(`${emp.name}: Year ${toYear} - Before: carry=${currentCarry}, current=${ent.current||0}. Adding ${balance} days → newCarry=${newCarry}`);
           
-          // Only update if carry has changed
-          if(newCarry !== currentCarry){
-            setEntitlement(emp, toYear, newCarry, ent.current||0);
-            changes = true;
-            console.log(`${emp.name}: ✓ Updated carry to ${newCarry}`);
+          // Check if carry from this specific year has already been applied
+          // by comparing if current carry matches what it should be (just the balance from this year)
+          const expectedCarry = balance; // Only the carry from this year pair, not accumulated
+          
+          console.log(`${emp.name}: Year ${toYear} - Before: carry=${currentCarry}, current=${ent.current||0}. Expected carry from ${fromYear}: ${expectedCarry}`);
+          
+          // Only set if it's not already correctly set (avoid duplicates)
+          if(currentCarry !== expectedCarry){
+            // If current carry is 0 or less than expected, set it to expected
+            // This handles the case where it hasn't been carried yet
+            if(currentCarry < expectedCarry){
+              setEntitlement(emp, toYear, expectedCarry, ent.current||0);
+              changes = true;
+              console.log(`${emp.name}: ✓ Set carry to ${expectedCarry}`);
+            }else{
+              console.log(`${emp.name}: ⊘ Carry already applied (${currentCarry} >= ${expectedCarry})`);
+            }
           }
         }
       }
@@ -210,6 +220,8 @@
       saveDB(DB);
       await apiSaveAllEmployees();
       console.log('\n=== CARRY-FORWARD COMPLETE ===');
+    }else{
+      console.log('\n=== NO CHANGES NEEDED (Already applied) ===');
     }
   }
   async function apiSaveAllEmployees(){
