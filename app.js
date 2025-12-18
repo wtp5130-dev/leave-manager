@@ -964,13 +964,23 @@
         console.log(`Fetching holidays for ${cc} in ${year}...`);
         const r = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`);
         console.log(`Response status: ${r.status}`);
+        
+        // Handle 204 No Content (API found nothing)
+        if(r.status === 204){
+          alert(`No holidays found for country code "${cc}" in ${year}.\n\nTry:\n- Verify country code is valid (e.g., SG, US, MY, GB, AU, IN)\n- Check if year is supported by the API`);
+          return;
+        }
+        
         if(!r.ok) {
           const errorText = await r.text();
           console.error(`API error: ${r.status} - ${errorText}`);
           throw new Error(`API returned ${r.status}`);
         }
+        
         const list = await r.json();
+        if(!Array.isArray(list)) throw new Error('Invalid API response format');
         console.log(`Fetched ${list.length} holidays`);
+        
         const dates = list.map(x=>x.date); // ISO YYYY-MM-DD
         const set = new Set(DB.holidays||[]);
         dates.forEach(d=>set.add(d));
@@ -979,7 +989,7 @@
         alert(`Successfully added ${dates.length} holidays for ${cc} ${year}`);
       }catch(err){
         console.error('Holiday fetch error:', err);
-        alert(`Could not fetch holidays: ${err.message}\n\nTroubleshooting:\n- Check country code (e.g., SG, US, MY)\n- Verify year is valid\n- Try again later if API is down\n- See console for details`);
+        alert(`Could not fetch holidays: ${err.message}\n\nTroubleshooting:\n- Check country code (e.g., SG, US, MY, GB, AU, IN)\n- Verify year is valid\n- Try again later if API is down\n- See console for details`);
       }
     });
     $('#holidaysTable').addEventListener('click', (e)=>{
