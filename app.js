@@ -172,18 +172,20 @@
   async function autoCarryForward(){
     // Automatically carry forward unused annual leave from current year to next year
     // Rule: If balance >= 5, carry 5. If 0 < balance < 5, carry the balance value.
+    const carryFromYear = state.year - 1; // Carry FROM previous year INTO current year
+    if(carryFromYear < 2024) return; // Don't carry before 2024
+    
     let changes = false;
     for(const emp of DB.employees){
-      const balance = getCarryForwardBalance(emp.id, state.year);
+      const balance = getCarryForwardBalance(emp.id, carryFromYear);
       if(balance > 0){
-        const nextYear = state.year + 1;
-        const ent = getEntitlement(emp, nextYear);
+        const ent = getEntitlement(emp, state.year);
         const newCarry = (ent.carry||0) + balance;
         // Only update if carry has changed
         if(newCarry !== ent.carry){
-          setEntitlement(emp, nextYear, newCarry, ent.current||0);
+          setEntitlement(emp, state.year, newCarry, ent.current||0);
           changes = true;
-          console.log(`Auto-carried ${balance} days for ${emp.name} from ${state.year} to ${nextYear}`);
+          console.log(`Auto-carried ${balance} days for ${emp.name} from ${carryFromYear} to ${state.year}`);
         }
       }
     }
@@ -227,8 +229,8 @@
         state.year = year;
         $('#yearInput').value = year;
         
-        // Auto-carry forward when navigating to 2025 or later
-        if(year >= 2025){
+    // Auto-carry forward when navigating to 2025 or later
+        if(year >= 2024){
           await autoCarryForward();
         }
         
@@ -843,8 +845,8 @@
     renderHolidays();
     initRealtime();
     
-    // Auto-carry forward on app load if we're viewing 2025 or later
-    if(state.year >= 2025){
+    // Auto-carry forward on app load if we're viewing 2024 or later
+    if(state.year >= 2024){
       await autoCarryForward();
     }
   }
