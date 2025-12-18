@@ -1,6 +1,7 @@
 import { sql } from '@vercel/postgres';
 import { ensureSchema, touchChange } from './db.js';
 import { broadcastChange } from './realtime.js';
+import { logAudit } from './audit-log.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -22,12 +23,18 @@ export default async function handler(req, res) {
     }
 
     // For edits on existing leave, prevent employees editing others' records
+    let oldLeave = null;
+    let isNew = true;
     if (l.id) {
       try {
-        const { rows } = await sql`SELECT created_by FROM leaves WHERE id=${l.id}`;
+        const { rows } = await sql`SELECT * FROM leaves WHERE id=${l.id}`;
         const owner = rows?.[0]?.created_by;
         if(owner && owner !== user.id && user.role==='EMPLOYEE'){
           return res.status(403).json({ ok:false, error:'forbidden' });
+        }
+        if (rows?.[0]) {
+          oldLeave = rows[0];
+          isNew = false;
         }
       } catch (e) {
         console.error('leave.js: error checking existing leave:', e);
@@ -40,6 +47,18 @@ export default async function handler(req, res) {
               VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, ${user.id||null}, now())
               ON CONFLICT (id) DO UPDATE SET employee_id=excluded.employee_id, type=excluded.type, status=excluded.status, applied=excluded.applied, from_date=excluded.from_date, to_date=excluded.to_date, days=excluded.days, reason=excluded.reason, approved_by=excluded.approved_by, approved_at=excluded.approved_at, updated_at=now()`;
     console.log('leave.js: insert/update succeeded');
+    
+    // Log audit trail
+    const action = isNew ? 'CREATE' : 'UPDATE';
+    const statusChange = oldLeave && oldLeave.status !== (l.status || 'PENDING');
+    if (statusChange && (l.status === 'APPROVED' || l.status === 'REJECTED')) {
+      // Log approval/rejection separately
+      await logAudit(user.id, user.email, l.status === 'APPROVED' ? 'APPROVE' : 'REJECT', 'LEAVE', l.id, `${l.type} leave (${l.from} to ${l.to})`, { status: oldLeave.status }, { status: l.status }, `Leave ${l.status === 'APPROVED' ? 'approved' : 'rejected'} by ${user.email}`);
+    } else {
+      // Log create/update
+      await logAudit(user.id, user.email, action, 'LEAVE', l.id, `${l.type} leave (${l.from} to ${l.to})`, oldLeave ? { status: oldLeave.status, days: oldLeave.days } : null, { status: l.status || 'PENDING', days: l.days }, `Leave ${action.toLowerCase()}d`);
+    }
+    
     await touchChange();
     await broadcastChange({ scope: 'leave' });
     res.status(200).json({ ok: true });
@@ -49,3 +68,4 @@ export default async function handler(req, res) {
     res.status(500).json({ ok: false, error: msg });
   }
 }
+

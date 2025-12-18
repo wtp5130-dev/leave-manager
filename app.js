@@ -849,6 +849,76 @@
     }
   }
 
+  // Audit trail functions
+  async function getAuditLogs(limit = 100, offset = 0) {
+    try {
+      const res = await fetch(`/api/audit-log?limit=${limit}&offset=${offset}`);
+      if (!res.ok) throw new Error('Failed to load audit logs');
+      const data = await res.json();
+      return data.logs || [];
+    } catch (e) {
+      console.error('getAuditLogs error:', e);
+      return [];
+    }
+  }
+
+  async function renderAuditLogs() {
+    try {
+      const logs = await getAuditLogs(200, 0);
+      const actionFilter = $('#auditActionFilter')?.value || '';
+      const entityFilter = $('#auditEntityFilter')?.value || '';
+      
+      let filtered = logs;
+      if (actionFilter) {
+        filtered = filtered.filter(l => l.action === actionFilter);
+      }
+      if (entityFilter) {
+        filtered = filtered.filter(l => l.entityType === entityFilter);
+      }
+      
+      const tbody = $('#auditLogsTable tbody');
+      if (!tbody) return;
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No audit logs found.</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map(log => {
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const userDisplay = log.userEmail || log.userId || 'System';
+        const details = log.details || '';
+        const entityDisplay = `${log.entityType}: ${log.entityName || log.entityId}`;
+        return `<tr>
+          <td style="font-size: 0.9em;">${timestamp}</td>
+          <td>${userDisplay}</td>
+          <td><strong>${log.action}</strong></td>
+          <td>${entityDisplay}</td>
+          <td>${details}</td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      console.error('renderAuditLogs error:', e);
+      alert('Failed to load audit trail');
+    }
+  }
+
+  function bindAuditTrail() {
+    const loadBtn = $('#loadAuditLogsBtn');
+    const actionFilter = $('#auditActionFilter');
+    const entityFilter = $('#auditEntityFilter');
+    
+    if (loadBtn) {
+      loadBtn.addEventListener('click', renderAuditLogs);
+    }
+    if (actionFilter) {
+      actionFilter.addEventListener('change', renderAuditLogs);
+    }
+    if (entityFilter) {
+      entityFilter.addEventListener('change', renderAuditLogs);
+    }
+  }
+
   // User management
   async function renderUsers(){
     try{
@@ -943,6 +1013,7 @@
     bindUser();
     bindHolidays();
     bindMaintenanceButtons();
+    bindAuditTrail();
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
     

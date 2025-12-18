@@ -258,6 +258,46 @@
           </table>
         </div>
       </div>
+
+      <div class="panel">
+        <h2>Audit Trail</h2>
+        <div class="controls">
+          <label>Filter by Action
+            <select id="auditActionFilter">
+              <option value="">All</option>
+              <option value="CREATE">Create</option>
+              <option value="UPDATE">Update</option>
+              <option value="DELETE">Delete</option>
+              <option value="APPROVE">Approve</option>
+              <option value="REJECT">Reject</option>
+            </select>
+          </label>
+          <label>Filter by Entity Type
+            <select id="auditEntityFilter">
+              <option value="">All</option>
+              <option value="LEAVE">Leave</option>
+              <option value="EMPLOYEE">Employee</option>
+              <option value="USER">User</option>
+              <option value="ENTITLEMENT">Entitlement</option>
+            </select>
+          </label>
+          <button id="loadAuditLogsBtn" class="primary">Load Audit Trail</button>
+        </div>
+        <div id="auditLogsContainer" class="table-wrap" style="margin-top: 1rem;">
+          <table class="table" id="auditLogsTable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </main>
 

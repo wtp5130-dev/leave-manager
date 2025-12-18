@@ -1,11 +1,12 @@
 import { sql } from '@vercel/postgres';
 import { requireAuth } from './auth-helpers.js';
+import { logAudit } from './audit-log.js';
 import { randomUUID } from 'crypto';
 
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
-  await requireAuth(req, res, ['HR', 'MANAGER']);
+  const user = await requireAuth(req, res, ['HR', 'MANAGER']);
   if (res.headersSent) return;
 
   const { email, name, role } = req.body || {};
@@ -34,6 +35,9 @@ export default async function handler(req, res) {
       VALUES (${userId}, ${email}, ${name}, ${role || 'EMPLOYEE'})
       RETURNING id, email, name, picture, role, created_at
     `;
+
+    // Log audit trail
+    await logAudit(user.id, user.email, 'CREATE', 'USER', userId, email, null, { email, name, role }, `User created by ${user.email}`);
 
     res.status(201).json({ ok: true, user: result.rows[0] });
   } catch (e) {
