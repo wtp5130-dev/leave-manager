@@ -54,6 +54,13 @@ export async function ensureSchema() {
     updated_at TIMESTAMPTZ DEFAULT now()
   )`;
 
+  // Add missing created_by column if it doesn't exist
+  try {
+    await sql`ALTER TABLE leaves ADD COLUMN created_by TEXT`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   await sql`CREATE TABLE IF NOT EXISTS holidays (
     date TEXT PRIMARY KEY
   )`;
