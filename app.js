@@ -678,9 +678,9 @@
     bindPrint();
     bindCloudSync();
     bindUser();
-    bindUsers();
     bindHolidays();
     await bindAuthUI();
+    bindUsers();  // Must be after bindAuthUI so user role is loaded
     renderAll();
     renderHolidays();
     initRealtime();
