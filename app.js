@@ -169,6 +169,42 @@
     const totals = annualTotalsFor(empId, year);
     return Math.min(5, Math.max(0, totals.balance)); // Cap at 5 days maximum
   }
+  async function autoCarryForward(){
+    // Automatically carry forward unused annual leave from current year to next year
+    // Rule: If balance >= 5, carry 5. If 0 < balance < 5, carry the balance value.
+    let changes = false;
+    for(const emp of DB.employees){
+      const balance = getCarryForwardBalance(emp.id, state.year);
+      if(balance > 0){
+        const nextYear = state.year + 1;
+        const ent = getEntitlement(emp, nextYear);
+        const newCarry = (ent.carry||0) + balance;
+        // Only update if carry has changed
+        if(newCarry !== ent.carry){
+          setEntitlement(emp, nextYear, newCarry, ent.current||0);
+          changes = true;
+          console.log(`Auto-carried ${balance} days for ${emp.name} from ${state.year} to ${nextYear}`);
+        }
+      }
+    }
+    if(changes){
+      saveDB(DB);
+      await apiSaveAllEmployees();
+    }
+  }
+  async function apiSaveAllEmployees(){
+    // Save all employees in bulk to backend
+    for(const emp of DB.employees){
+      for(const year in emp.entitlements||{}){
+        const ent = emp.entitlements[year];
+        try{
+          await apiSaveEmployee(emp, { year:Number(year), carry:ent.carry||0, current:ent.current||0 });
+        }catch(e){
+          console.error(`Error saving entitlements for ${emp.name} year ${year}:`, e);
+        }
+      }
+    }
+  }
 
   // Tabs
   function bindTabs(){
@@ -186,10 +222,15 @@
   // Year tabs
   function bindYearTabs(){
     $$('.year-tab-nav').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const year = Number(btn.dataset.year);
         state.year = year;
         $('#yearInput').value = year;
+        
+        // Auto-carry forward when navigating to 2025 or later
+        if(year >= 2025){
+          await autoCarryForward();
+        }
         
         // Update year tab active state
         $$('.year-tab-nav').forEach(b=>b.classList.remove('active'));
@@ -801,6 +842,11 @@
     renderAll();
     renderHolidays();
     initRealtime();
+    
+    // Auto-carry forward on app load if we're viewing 2025 or later
+    if(state.year >= 2025){
+      await autoCarryForward();
+    }
   }
 
   // Kickoff
