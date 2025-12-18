@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Setup Admin - Leave Manager</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+    h1 { font-size: 24px; margin-bottom: 30px; color: #333; }
+    label { display: block; margin-bottom: 8px; color: #555; font-weight: 500; }
+    input, button { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    button { background: #667eea; color: white; border: none; cursor: pointer; font-weight: 500; }
+    button:hover { background: #5568d3; }
+    .status { margin-top: 20px; padding: 12px; border-radius: 4px; display: none; }
+    .status.success { background: #d4edda; color: #155724; display: block; }
+    .status.error { background: #f8d7da; color: #721c24; display: block; }
+    .info { background: #e7f3ff; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; color: #004085; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Setup First Admin User</h1>
+    
+    <div class="info">
+      ℹ️ This creates the first administrator account. After setup, you'll sign in via Google OAuth and manage other users from the app.
+    </div>
+
+    <label>Email Address:</label>
+    <input id="email" type="email" placeholder="william@quantamleap.net" />
+
+    <label>Full Name (optional):</label>
+    <input id="name" type="text" placeholder="William" />
+
+    <label>Setup Token:</label>
+    <input id="token" type="password" placeholder="Ask your administrator for the setup token" />
+
+    <button onclick="setupAdmin()">Create Admin User</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    async function setupAdmin() {
+      const email = document.getElementById('email').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const token = document.getElementById('token').value.trim();
+      const status = document.getElementById('status');
+
+      if (!email) {
+        showStatus('Email is required', 'error');
+        return;
+      }
+
+      if (!token) {
+        showStatus('Setup token is required', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/setup-admin', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-setup-token': token
+          },
+          body: JSON.stringify({ email, name })
+        });
+
+        const json = await res.json();
+
+        if (res.ok) {
+          showStatus('✓ Admin user created! You can now sign in at /login.html', 'success');
+          document.getElementById('email').value = '';
+          document.getElementById('name').value = '';
+          document.getElementById('token').value = '';
+          setTimeout(() => {
+            window.location.href = '/login.html';
+          }, 2000);
+        } else {
+          showStatus('Error: ' + (json.error || 'Setup failed'), 'error');
+        }
+      } catch (e) {
+        showStatus('Network error: ' + e.message, 'error');
+      }
+    }
+
+    function showStatus(msg, type) {
+      const status = document.getElementById('status');
+      status.textContent = msg;
+      status.className = 'status ' + type;
+    }
+
+    // Allow Enter key to submit
+    document.getElementById('token').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') setupAdmin();
+    });
+  </script>
+</body>
+</html>
