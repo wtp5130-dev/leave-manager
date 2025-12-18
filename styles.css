@@ -71,17 +71,26 @@ textarea{resize:vertical}
 /* Card styles (print-friendly) */
 .card-container{background:var(--card-bg);color:#111;padding:20px;border-radius:12px;border:1px solid var(--card-border)}
 .card{width:100%;background:#ffd6e0;border:2px solid #d88a99;border-radius:8px;padding:16px}
-.card h3{margin:0 0 8px 0}
+.card h3{margin:0 0 8px 0;text-align:center}
 .card small{color:#374151}
-.card .grid{grid-template-columns:repeat(4, 1fr)}
+.card .grid{grid-template-columns:repeat(4, 1fr);gap:12px}
 .card .row{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:6px}
 .card .label{grid-column:span 3;font-weight:600}
 .card .value{grid-column:span 3}
 .card .section-title{margin-top:14px;margin-bottom:6px;font-weight:700;border-bottom:2px solid #e9aabb}
 
-.card table{width:100%;border-collapse:collapse;background:white;border:1px solid #e9aabb}
-.card th,.card td{border:1px solid #e9aabb;padding:6px;font-size:12px}
-.card th{background:#ffe6ec}
+.card table{width:100%;border-collapse:collapse;background:white;border:1px solid #e9aabb;margin-bottom:8px}
+.card table th{background:#ffe6ec;font-weight:600;text-align:left}
+.card table th,.card table td{border:1px solid #e9aabb;padding:8px;font-size:12px;text-align:left}
+.card table td{vertical-align:top}
+
+/* Column width alignment for better balance */
+.card table thead tr th:nth-child(1){ width:15%; }
+.card table thead tr th:nth-child(2){ width:12%; }
+.card table thead tr th:nth-child(3){ width:12%; }
+.card table thead tr th:nth-child(4){ width:12%; }
+.card table thead tr th:nth-child(5){ width:12%; }
+.card table thead tr th:nth-child(6){ width:37%; }
 
 .print-only{display:none}
 @media print{
