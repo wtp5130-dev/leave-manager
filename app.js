@@ -29,7 +29,7 @@
   };
 
   let DB = loadDB();
-  let state = { year: new Date().getFullYear(), autoCarryDone: false };
+  let state = { year: new Date().getFullYear(), autoCarryDone: false, selectedEmployee: null };
 
   // Database API helpers
   async function apiGetAll(){
@@ -274,6 +274,32 @@
     }
   }
 
+  // Employee tabs
+  function renderEmployeeTabs(){
+    const nav = $('#employeeTabsNav');
+    const html = DB.employees
+      .map(e => `<button class="employee-tab-nav ${state.selectedEmployee === e.id ? 'active' : ''}" data-emp-id="${e.id}">${e.name}</button>`)
+      .join('');
+    nav.innerHTML = html;
+    
+    // Bind click handlers
+    $$('.employee-tab-nav').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.selectedEmployee = btn.dataset.empId;
+        renderEmployeeTabs(); // Update active state
+        renderEmployees(); // Show this employee's data
+        renderLeaves(); // Show this employee's leaves
+        buildReportCard(); // Update report
+      });
+    });
+    
+    // Auto-select first employee if none selected
+    if(!state.selectedEmployee && DB.employees.length > 0){
+      state.selectedEmployee = DB.employees[0].id;
+      renderEmployeeTabs();
+    }
+  }
+
   // Tabs
   function bindTabs(){
     $$('.tab').forEach(btn=>{
@@ -326,7 +352,12 @@
   function renderEmployees(){
     const tbody = $('#employeesTable tbody');
     const q = ($('#employeeSearch').value||'').toLowerCase();
-    const rows = DB.employees
+    
+    // If an employee is selected, show only that employee
+    const employees = state.selectedEmployee 
+      ? DB.employees.filter(e => e.id === state.selectedEmployee)
+      : DB.employees;
+    const rows = employees
       .filter(e => `${e.name} ${e.jobTitle||''} ${e.department||''} ${e.email||''}`.toLowerCase().includes(q))
       .map(emp =>{
         const totals = annualTotalsFor(emp.id, state.year);
@@ -893,6 +924,7 @@
   }
 
   function renderAll(){
+    renderEmployeeTabs();
     renderEmployeeOptions();
     renderEmployees();
     renderLeaves();
