@@ -45,6 +45,12 @@
   async function apiSaveLeave(l){ const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) }); if(!r.ok) throw new Error('Leave save failed'); }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
   async function apiSetHolidays(dates){ const r = await fetch('/api/holidays-set', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates }) }); if(!r.ok) throw new Error('Holidays set failed'); }
+  
+  // User management API helpers
+  async function apiGetUsers(){ const r = await fetch('/api/users-list'); if(!r.ok) throw new Error('Load users failed'); const j = await r.json(); return j.users || []; }
+  async function apiCreateUser(email, name, role){ const r = await fetch('/api/users-create', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ email, name, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Create user failed'); } return (await r.json()).user; }
+  async function apiDeleteUser(id){ const r = await fetch(`/api/users-delete?id=${encodeURIComponent(id)}`, { method:'DELETE' }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Delete user failed'); } }
+  async function apiUpdateUserRole(id, role){ const r = await fetch('/api/users-update', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Update user failed'); } return (await r.json()).user; }
 
   async function refreshFromServer(){
     const data = await apiGetAll();
@@ -535,6 +541,77 @@
       alert('User saved.');
     });
   }
+  
+  // User management
+  async function renderUsers(){
+    try{
+      const users = await apiGetUsers();
+      const tbody = $('#usersTable tbody');
+      tbody.innerHTML = users.map(u=>`<tr>
+        <td>${u.email}</td>
+        <td>${u.name||''}</td>
+        <td>
+          <select class="user-role" data-id="${u.id}" data-email="${u.email}">
+            <option value="EMPLOYEE" ${u.role==='EMPLOYEE'?'selected':''}>Employee</option>
+            <option value="MANAGER" ${u.role==='MANAGER'?'selected':''}>Manager</option>
+            <option value="HR" ${u.role==='HR'?'selected':''}>HR</option>
+          </select>
+        </td>
+        <td><button class="danger" data-id="${u.id}" data-act="del-user">Remove</button></td>
+      </tr>`).join('') || '<tr><td colspan="4">No users. Add one to get started.</td></tr>';
+    }catch(e){ console.error('renderUsers error:', e); alert('Failed to load users'); }
+  }
+  
+  function bindUsers(){
+    const usersPanel = $('#usersPanel');
+    const currentUser = getCurrentUser();
+    if(currentUser && (currentUser.role === 'HR' || currentUser.role === 'MANAGER')){
+      usersPanel.style.display = 'block';
+    }
+    
+    $('#addUserBtn').addEventListener('click', async ()=>{
+      const email = $('#newUserEmail').value.trim();
+      const name = $('#newUserName').value.trim();
+      const role = $('#newUserRole').value;
+      if(!email || !name){ alert('Email and name required'); return; }
+      try{
+        await apiCreateUser(email, name, role);
+        $('#newUserEmail').value = '';
+        $('#newUserName').value = '';
+        alert('User added successfully');
+        await renderUsers();
+      }catch(e){ alert('Error: ' + e.message); }
+    });
+    
+    $('#usersTable').addEventListener('change', async (e)=>{
+      if(e.target.classList.contains('user-role')){
+        const id = e.target.dataset.id;
+        const role = e.target.value;
+        try{
+          await apiUpdateUserRole(id, role);
+          alert('Role updated');
+        }catch(err){ alert('Error: ' + err.message); e.target.value = e.target.dataset.prevRole; }
+      }
+    });
+    
+    $('#usersTable').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      if(btn.dataset.act === 'del-user'){
+        const id = btn.dataset.id;
+        if(confirm('Remove this user?')){
+          try{
+            await apiDeleteUser(id);
+            alert('User removed');
+            await renderUsers();
+          }catch(err){ alert('Error: ' + err.message); }
+        }
+      }
+    });
+    
+    renderUsers();
+  }
+  
   function renderHolidays(){
     $('#holYear').value = state.year;
     const tbody = $('#holidaysTable tbody');
@@ -601,6 +678,7 @@
     bindPrint();
     bindCloudSync();
     bindUser();
+    bindUsers();
     bindHolidays();
     await bindAuthUI();
     renderAll();

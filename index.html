@@ -210,6 +210,26 @@
         </form>
       </div>
 
+      <div class="panel" id="usersPanel" style="display:none;">
+        <h2>Manage Users</h2>
+        <div class="controls">
+          <input id="newUserEmail" type="email" placeholder="Email" />
+          <input id="newUserName" type="text" placeholder="Full Name" />
+          <select id="newUserRole">
+            <option value="EMPLOYEE">Employee</option>
+            <option value="MANAGER">Manager</option>
+            <option value="HR">HR</option>
+          </select>
+          <button id="addUserBtn" class="primary">Add User</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="usersTable">
+            <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="panel">
         <h2>Holidays</h2>
         <div class="controls">

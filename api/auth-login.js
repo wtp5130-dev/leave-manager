@@ -20,11 +20,20 @@ export default async function handler(req, res){
     const name = payload.name || '';
     const picture = payload.picture || '';
 
-    await sql`INSERT INTO users (id, email, name, picture)
-              VALUES (${sub}, ${email}, ${name}, ${picture})
-              ON CONFLICT (id) DO UPDATE SET email=excluded.email, name=excluded.name, picture=excluded.picture, updated_at=now()`;
+    // Check if user is registered (email must be in users table)
+    const checkUser = await sql`SELECT id, email, name, picture, role FROM users WHERE email = ${email}`;
+    if (checkUser.rows.length === 0) {
+      return res.status(403).json({ ok: false, error: 'User not registered. Contact your administrator.' });
+    }
 
-    const { rows } = await sql`SELECT id, email, name, picture, role FROM users WHERE id=${sub}`;
+    const existingUser = checkUser.rows[0];
+
+    // Update user's Google ID and profile info if not already set
+    await sql`UPDATE users 
+              SET id = COALESCE(id, ${sub}), name = ${name}, picture = ${picture}, updated_at = now()
+              WHERE email = ${email}`;
+
+    const { rows } = await sql`SELECT id, email, name, picture, role FROM users WHERE email = ${email}`;
     const user = rows[0];
     setSessionCookie(res, { id:user.id, email:user.email, name:user.name, picture:user.picture, role:user.role });
     res.status(200).json({ ok:true, user });
