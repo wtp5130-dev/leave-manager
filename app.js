@@ -278,9 +278,21 @@
   function renderEmployeeOptions(){
     const opts = DB.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     ['leaveEmployee','filterEmployee','reportEmployee'].forEach(id=>{
-      const el = $('#'+id);
+      const el = $('#'+id); if(!el) return;
+      const previous = el.value; // remember current selection
       const keep = id==='filterEmployee';
       el.innerHTML = keep ? `<option value="">All Employees</option>${opts}` : opts;
+      // Restore previous selection if still available; otherwise use sensible default
+      const hasPrev = previous==='' || DB.employees.some(e=>e.id===previous);
+      if(hasPrev) {
+        el.value = previous;
+      } else if(keep) {
+        el.value = '';
+      } else if(DB.employees.length){
+        el.value = DB.employees[0].id;
+      } else {
+        el.value = '';
+      }
     });
   }
 
