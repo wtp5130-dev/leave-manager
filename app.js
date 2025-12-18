@@ -222,7 +222,7 @@
     $('#employeeCancelBtn').addEventListener('click', ()=> fillEmployeeForm(null));
 
     // Table actions
-    $('#employeesTable').addEventListener('click', (e)=>{
+    $('#employeesTable').addEventListener('click', async (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
       const id = btn.dataset.id; const act = btn.dataset.act;
       if(act==='edit'){ fillEmployeeForm(getEmployee(id)); }
@@ -321,7 +321,7 @@
     tbody.innerHTML=''; rows.forEach(r=>tbody.appendChild(r));
   }
   function bindLeavesTable(){
-    $('#leavesTable').addEventListener('click', (e)=>{
+    $('#leavesTable').addEventListener('click', async (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
       const id = btn.dataset.id; const act = btn.dataset.act;
       if(act==='edit'){
