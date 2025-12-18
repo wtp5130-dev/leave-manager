@@ -8,6 +8,8 @@ export default async function handler(req, res) {
   try {
     await ensureSchema();
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    const { requireAuth } = await import('./auth-helpers.js');
+    const authed = requireAuth(req, res, ['HR','MANAGER']); if(!authed) return;
     const { id, name, jobTitle, department, dateJoined, entitlement } = req.body || {};
     if (!id || !name) return res.status(400).json({ ok: false, error: 'id and name required' });
 

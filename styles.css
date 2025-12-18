@@ -28,6 +28,8 @@ body{
 .header-actions{display:flex;gap:8px;align-items:center}
 .year-picker{display:flex;gap:6px;align-items:center;color:var(--muted)}
 .year-picker input{width:86px}
+.auth-box{display:flex;gap:8px;align-items:center;margin-right:8px}
+.auth-box .user{color:var(--muted);font-size:12px}
 .button, button{
   appearance:none;border:1px solid #334155;background:#0b1220;color:var(--text);
   padding:8px 12px;border-radius:8px;cursor:pointer;transition:.2s ease;border-color:#334155

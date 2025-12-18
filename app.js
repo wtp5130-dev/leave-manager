@@ -488,6 +488,42 @@
     try{ return JSON.parse(localStorage.getItem('leaveManager.user')||'{}'); }catch{ return {}; }
   }
   function setCurrentUser(user){ localStorage.setItem('leaveManager.user', JSON.stringify(user)); }
+  async function fetchServerUser(){
+    try{
+      const r = await fetch('/api/auth-me');
+      if(!r.ok) return null; const j = await r.json(); if(!j.ok) return null; return j.user;
+    }catch{return null}
+  }
+  async function bindAuthUI(){
+    const box = document.getElementById('authBox'); if(!box) return;
+    const render = (user)=>{
+      if(user){
+        box.innerHTML = `<span class="user">${user.name||user.email} • ${user.role}</span><button id="logoutBtn" class="ghost">Logout</button>`;
+        document.getElementById('logoutBtn').onclick = async ()=>{ await fetch('/api/auth-logout'); setCurrentUser({}); location.reload(); };
+      }else{
+        const gid = (window.GOOGLE_CLIENT_ID || '').trim();
+        box.innerHTML = `<button id="googleLogin" class="primary">Sign in with Google</button>`;
+        document.getElementById('googleLogin').onclick = async ()=>{
+          const clientId = gid || (window.__cfgClientId || '');
+          // Use Google Identity Services One Tap prompt
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (res)=>{
+              const idToken = res.credential; if(!idToken) return;
+              const r = await fetch('/api/auth-login', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ idToken }) });
+              if(r.ok){ const j = await r.json(); setCurrentUser(j.user); location.reload(); }
+              else alert('Login failed');
+            }
+          });
+          google.accounts.id.prompt();
+        };
+      }
+    };
+    // Fetch key/cluster for Pusher also includes no need for Google client id; require GOOGLE_CLIENT_ID env set. We expose it via window in next step optionally.
+    const serverUser = await fetchServerUser();
+    if(serverUser){ setCurrentUser(serverUser); render(serverUser); }
+    else { render(null); }
+  }
   function bindUser(){
     const user = getCurrentUser();
     $('#currentUserName').value = user.name||'';
@@ -565,6 +601,7 @@
     bindCloudSync();
     bindUser();
     bindHolidays();
+    bindAuthUI();
     renderAll();
     renderHolidays();
     initRealtime();

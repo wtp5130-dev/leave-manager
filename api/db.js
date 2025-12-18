@@ -34,6 +34,7 @@ export async function ensureSchema() {
     reason TEXT,
     approved_by TEXT,
     approved_at TEXT,
+    created_by TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
   )`;
@@ -47,6 +48,16 @@ export async function ensureSchema() {
     last_change TIMESTAMPTZ DEFAULT now()
   )`;
   await sql`INSERT INTO meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
+
+  await sql`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY, -- google sub
+    email TEXT UNIQUE,
+    name TEXT,
+    picture TEXT,
+    role TEXT DEFAULT 'EMPLOYEE',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+  )`;
 }
 
 export async function getAllData() {
@@ -80,7 +91,8 @@ export async function getAllData() {
     days: Number(l.days || 0),
     reason: l.reason,
     approvedBy: l.approved_by,
-    approvedAt: l.approved_at
+    approvedAt: l.approved_at,
+    createdBy: l.created_by
   }));
   const holidays = holRows.map(h => h.date);
   return { employees, leaves, holidays };

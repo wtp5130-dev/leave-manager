@@ -7,11 +7,30 @@ export const config = { runtime: 'nodejs' };
 export default async function handler(req, res) {
   try {
     await ensureSchema();
+    const l = req.body || {};
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const l = req.body || {};
+    // authorization logic
+    const { getUserFromRequest } = await import('./auth-helpers.js');
+    const user = getUserFromRequest(req);
+    if(!user) return res.status(401).json({ ok:false, error:'unauthorized' });
+
+    // If approving/rejecting, require MANAGER/HR
+    if ((l.status === 'APPROVED' || l.status === 'REJECTED') && !['MANAGER','HR'].includes(user.role)) {
+      return res.status(403).json({ ok:false, error:'forbidden' });
+    }
+
+    // For edits on existing leave, prevent employees editing others' records
+    if (l.id) {
+      const { rows } = await sql`SELECT created_by FROM leaves WHERE id=${l.id}`;
+      const owner = rows?.[0]?.created_by;
+      if(owner && owner !== user.id && user.role==='EMPLOYEE'){
+        return res.status(403).json({ ok:false, error:'forbidden' });
+      }
+    }
     if (!l.id || !l.employeeId || !l.type) return res.status(400).json({ ok: false, error: 'id, employeeId, type required' });
-    await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, updated_at)
-              VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, now())
+    await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, created_by, updated_at)
+              VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, ${user.id||null}, now())
               ON CONFLICT (id) DO UPDATE SET employee_id=excluded.employee_id, type=excluded.type, status=excluded.status, applied=excluded.applied, from_date=excluded.from_date, to_date=excluded.to_date, days=excluded.days, reason=excluded.reason, approved_by=excluded.approved_by, approved_at=excluded.approved_at, updated_at=now()`;
     await touchChange();
     await broadcastChange({ scope: 'leave' });

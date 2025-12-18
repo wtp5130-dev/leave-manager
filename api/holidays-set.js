@@ -8,6 +8,8 @@ export default async function handler(req, res) {
   try {
     await ensureSchema();
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    const { requireAuth } = await import('./auth-helpers.js');
+    const authed = requireAuth(req, res, ['HR','MANAGER']); if(!authed) return;
     const { dates } = req.body || {};
     if (!Array.isArray(dates)) return res.status(400).json({ ok: false, error: 'dates array required' });
 
