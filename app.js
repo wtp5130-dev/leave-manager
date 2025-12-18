@@ -504,7 +504,8 @@
         const gid = (window.GOOGLE_CLIENT_ID || '').trim();
         box.innerHTML = `<button id="googleLogin" class="primary">Sign in with Google</button>`;
         document.getElementById('googleLogin').onclick = async ()=>{
-          const clientId = gid || (window.__cfgClientId || '');
+          let clientId = gid;
+          if(!clientId){ try{ const r = await fetch('/api/auth-config'); if(r.ok){ const j=await r.json(); clientId=j.clientId||''; } }catch{} }
           // Use Google Identity Services One Tap prompt
           google.accounts.id.initialize({
             client_id: clientId,
