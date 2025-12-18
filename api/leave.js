@@ -7,13 +7,11 @@ export const config = { runtime: 'nodejs' };
 export default async function handler(req, res) {
   try {
     await ensureSchema();
-    const l = req.body || {};
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const l = req.body || {};
     // authorization logic
-    const { getUserFromRequest } = await import('./auth-helpers.js');
-    const user = getUserFromRequest(req);
-    if(!user) return res.status(401).json({ ok:false, error:'unauthorized' });
+    const { requireAuth } = await import('./auth-helpers.js');
+    const user = requireAuth(req, res); if(!user) return;
 
     // If approving/rejecting, require MANAGER/HR
     if ((l.status === 'APPROVED' || l.status === 'REJECTED') && !['MANAGER','HR'].includes(user.role)) {
@@ -36,6 +34,7 @@ export default async function handler(req, res) {
     await broadcastChange({ scope: 'leave' });
     res.status(200).json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    console.error('leave endpoint error:', err);
+    res.status(500).json({ ok: false, error: err?.message || 'internal error' });
   }
 }
