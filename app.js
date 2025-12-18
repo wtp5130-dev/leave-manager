@@ -518,6 +518,8 @@
     });
     $('#reportYear').value = state.year;
     $('#reportYear').addEventListener('change', ()=> buildReportCard());
+    $('#reportEmployee').addEventListener('change', ()=> buildReportCard());
+    $('#refreshReport').addEventListener('click', ()=> buildReportCard());
   }
 
   // User & holidays
