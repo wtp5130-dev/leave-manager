@@ -28,6 +28,7 @@
     scheduleDebouncedSync('local-change');
   };
 
+  let DB = loadDB();
   let state = { year: new Date().getFullYear(), autoCarryDone: false };
 
   // Database API helpers
