@@ -834,7 +834,6 @@
     bindLeavesTable();
     bindImportExport();
     bindPrint();
-    bindCloudSync();
     bindUser();
     bindHolidays();
     await bindAuthUI();
@@ -849,6 +848,9 @@
     
     renderAll();
     renderHolidays();
+    
+    // Now bind cloud sync AFTER data is loaded
+    bindCloudSync();
     initRealtime();
     
     // Auto-carry forward on app load if we're viewing 2024 or later
