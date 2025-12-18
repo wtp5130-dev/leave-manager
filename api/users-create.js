@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { requireAuth } from './auth-helpers.js';
+import { randomUUID } from 'crypto';
 
 export const config = { runtime: 'nodejs' };
 
@@ -24,10 +25,13 @@ export default async function handler(req, res) {
       return res.status(409).json({ ok: false, error: 'User already exists' });
     }
 
+    // Generate UUID for new user (will be replaced with Google sub on first login)
+    const userId = randomUUID();
+
     // Create new user (without Google sub, will be set on first login)
     const result = await sql`
-      INSERT INTO users (email, name, role)
-      VALUES (${email}, ${name}, ${role || 'EMPLOYEE'})
+      INSERT INTO users (id, email, name, role)
+      VALUES (${userId}, ${email}, ${name}, ${role || 'EMPLOYEE'})
       RETURNING id, email, name, picture, role, created_at
     `;
 
