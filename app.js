@@ -28,8 +28,7 @@
     scheduleDebouncedSync('local-change');
   };
 
-  let DB = loadDB();
-  let state = { year: new Date().getFullYear() };
+  let state = { year: new Date().getFullYear(), autoCarryDone: false };
 
   // Database API helpers
   async function apiGetAll(){
@@ -170,6 +169,10 @@
     return Math.min(5, Math.max(0, totals.balance)); // Cap at 5 days maximum
   }
   async function autoCarryForward(){
+    // Only run once per app session to avoid duplicate carries
+    if(state.autoCarryDone) return;
+    state.autoCarryDone = true;
+    
     // Automatically carry forward unused annual leave from current year to next year
     // Rule: If balance >= 5, carry 5. If 0 < balance < 5, carry the balance value.
     const carryFromYear = state.year - 1; // Carry FROM previous year INTO current year
@@ -228,11 +231,6 @@
         const year = Number(btn.dataset.year);
         state.year = year;
         $('#yearInput').value = year;
-        
-    // Auto-carry forward when navigating to 2025 or later
-        if(year >= 2024){
-          await autoCarryForward();
-        }
         
         // Update year tab active state
         $$('.year-tab-nav').forEach(b=>b.classList.remove('active'));
