@@ -6,7 +6,6 @@
   <title>Leave Manager</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://js.pusher.com/8.2/pusher.min.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <header class="app-header">
@@ -17,7 +16,7 @@
       <h1>Staff Leave Manager</h1>
     </div>
     <div class="header-actions">
-      <div id="authBox" class="auth-box"></div>
+      <div id="userInfo" class="auth-box"></div>
       <label class="year-picker">Year
         <input id="yearInput" type="number" min="2000" max="2100" step="1" />
       </label>
@@ -33,6 +32,7 @@
         <small id="cloudStatus" style="color:var(--muted)"></small>
       </div>
       <button id="printCardBtn" class="primary">Print Card</button>
+      <button id="logoutBtn" class="ghost">Logout</button>
     </div>
   </header>
 

@@ -495,66 +495,34 @@
     }catch{return null}
   }
   async function bindAuthUI(){
-    const box = document.getElementById('authBox'); 
-    if(!box) return;
-    
-    const render = (user)=>{
-      if(user && user.email){
-        box.innerHTML = `<span class="user">${user.name||user.email} • ${user.role}</span><button id="logoutBtn" class="ghost">Logout</button>`;
-        document.getElementById('logoutBtn').onclick = async ()=>{ await fetch('/api/auth-logout'); setCurrentUser({}); location.reload(); };
-      }else{
-        const gid = (window.GOOGLE_CLIENT_ID || '').trim();
-        box.innerHTML = `<button id="googleLogin" class="primary">Sign in with Google</button>`;
-        document.getElementById('googleLogin').onclick = async ()=>{
-          let clientId = gid;
-          if(!clientId){ 
-            try{ 
-              const r = await fetch('/api/auth-config'); 
-              if(r.ok){ 
-                const j=await r.json(); 
-                clientId=j.clientId||''; 
-              } 
-            }catch(e){ console.error('Failed to fetch Google client ID', e); }
-          }
-          if(!clientId){ alert('Google client ID not configured. Contact admin.'); return; }
-          // Use Google Identity Services One Tap prompt
-          google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (res)=>{
-              const idToken = res.credential; 
-              if(!idToken) return;
-              try{
-                const r = await fetch('/api/auth-login', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ idToken }) });
-                if(r.ok){ 
-                  const j = await r.json(); 
-                  setCurrentUser(j.user); 
-                  location.reload(); 
-                }
-                else{ 
-                  const err = await r.text();
-                  console.error('Login failed:', r.status, err);
-                  alert('Login failed: ' + (err || r.status)); 
-                }
-              }catch(e){ console.error('Login error', e); alert('Login error: ' + e.message); }
-            }
-          });
-          google.accounts.id.prompt();
-        };
-      }
-    };
-    
     try{
       const serverUser = await fetchServerUser();
-      if(serverUser && serverUser.email){ 
-        setCurrentUser(serverUser); 
-        render(serverUser); 
+      if(!serverUser || !serverUser.email){ 
+        // Not authenticated, redirect to login page
+        window.location.href = '/login.html';
+        return;
       }
-      else { 
-        render(null); 
+      
+      // User is authenticated, display user info
+      setCurrentUser(serverUser);
+      const userInfo = document.getElementById('userInfo');
+      if(userInfo){
+        userInfo.innerHTML = `<span class="user">${serverUser.name||serverUser.email} • ${serverUser.role}</span>`;
+      }
+      
+      // Setup logout button
+      const logoutBtn = document.getElementById('logoutBtn');
+      if(logoutBtn){
+        logoutBtn.onclick = async ()=>{ 
+          await fetch('/api/auth-logout'); 
+          setCurrentUser({}); 
+          window.location.href = '/login.html'; 
+        };
       }
     }catch(e){
       console.error('bindAuthUI error:', e);
-      render(null); // Always show login button as fallback
+      // Redirect to login on error
+      window.location.href = '/login.html';
     }
   }
   function bindUser(){
