@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { ensureSchema } from './db.js';
+import { randomUUID } from 'crypto';
 
 export const config = { runtime: 'nodejs' };
 
@@ -36,10 +37,13 @@ export default async function handler(req, res) {
       });
     }
 
+    // Generate a UUID for the user (will be replaced with Google sub on first login)
+    const userId = randomUUID();
+
     // Create the first admin user
     const result = await sql`
-      INSERT INTO users (email, name, role)
-      VALUES (${email}, ${name || email.split('@')[0]}, 'HR')
+      INSERT INTO users (id, email, name, role)
+      VALUES (${userId}, ${email}, ${name || email.split('@')[0]}, 'HR')
       ON CONFLICT (email) DO UPDATE 
       SET role = 'HR', updated_at = now()
       RETURNING id, email, name, role, created_at
