@@ -45,8 +45,12 @@
   async function apiSaveLeave(l){
     const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) });
     if(!r.ok){
-      try{ const j = await r.json(); throw new Error(j?.error || 'Leave save failed'); }
-      catch{ throw new Error('Leave save failed'); }
+      let errMsg = 'Leave save failed';
+      try{ 
+        const j = await r.json();
+        if(j?.error) errMsg = j.error;
+      }catch(e){ console.error('error parsing response:', e); }
+      throw new Error(errMsg);
     }
     return r.json().catch(()=>({ ok:true }));
   }

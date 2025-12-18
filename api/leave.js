@@ -9,9 +9,12 @@ export default async function handler(req, res) {
     await ensureSchema();
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const l = req.body || {};
+    console.log('leave.js: received request body:', JSON.stringify(l));
+    
     // authorization logic
     const { requireAuth } = await import('./auth-helpers.js');
     const user = requireAuth(req, res); if(!user) return;
+    console.log('leave.js: user authenticated:', user.id, user.role);
 
     // If approving/rejecting, require MANAGER/HR
     if ((l.status === 'APPROVED' || l.status === 'REJECTED') && !['MANAGER','HR'].includes(user.role)) {
@@ -20,21 +23,29 @@ export default async function handler(req, res) {
 
     // For edits on existing leave, prevent employees editing others' records
     if (l.id) {
-      const { rows } = await sql`SELECT created_by FROM leaves WHERE id=${l.id}`;
-      const owner = rows?.[0]?.created_by;
-      if(owner && owner !== user.id && user.role==='EMPLOYEE'){
-        return res.status(403).json({ ok:false, error:'forbidden' });
+      try {
+        const { rows } = await sql`SELECT created_by FROM leaves WHERE id=${l.id}`;
+        const owner = rows?.[0]?.created_by;
+        if(owner && owner !== user.id && user.role==='EMPLOYEE'){
+          return res.status(403).json({ ok:false, error:'forbidden' });
+        }
+      } catch (e) {
+        console.error('leave.js: error checking existing leave:', e);
       }
     }
     if (!l.id || !l.employeeId || !l.type) return res.status(400).json({ ok: false, error: 'id, employeeId, type required' });
+    
+    console.log('leave.js: inserting/updating leave:', l.id, 'emp:', l.employeeId, 'type:', l.type);
     await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, created_by, updated_at)
               VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, ${user.id||null}, now())
               ON CONFLICT (id) DO UPDATE SET employee_id=excluded.employee_id, type=excluded.type, status=excluded.status, applied=excluded.applied, from_date=excluded.from_date, to_date=excluded.to_date, days=excluded.days, reason=excluded.reason, approved_by=excluded.approved_by, approved_at=excluded.approved_at, updated_at=now()`;
+    console.log('leave.js: insert/update succeeded');
     await touchChange();
     await broadcastChange({ scope: 'leave' });
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('leave endpoint error:', err);
-    res.status(500).json({ ok: false, error: err?.message || 'internal error' });
+    const msg = err?.message || 'internal error';
+    res.status(500).json({ ok: false, error: msg });
   }
 }
