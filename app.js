@@ -164,6 +164,11 @@
       .filter(l => l.employeeId===empId && l.type===type && (l.status==='APPROVED' || l.status===undefined))
       .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
   }
+  function getCarryForwardBalance(empId, year){
+    // Calculate unused balance from given year that should carry to next year
+    const totals = annualTotalsFor(empId, year);
+    return Math.max(0, totals.balance); // Only carry forward positive balance
+  }
 
   // Tabs
   function bindTabs(){
@@ -187,6 +192,7 @@
       .map(emp =>{
         const totals = annualTotalsFor(emp.id, state.year);
         const tr = document.createElement('tr');
+        const carryFwdBtn = getCarryForwardBalance(emp.id, state.year) > 0 ? `<button class="ghost" data-act="carry" data-id="${emp.id}" title="Carry forward ${getCarryForwardBalance(emp.id, state.year)} days to ${state.year+1}">Carry Fwd</button>` : '';
         tr.innerHTML = `
           <td>${emp.name||''}</td>
           <td>${emp.email||''}</td>
@@ -200,6 +206,7 @@
           <td class="actions">
             <button class="ghost" data-act="edit" data-id="${emp.id}">Edit</button>
             <button class="danger" data-act="del" data-id="${emp.id}">Delete</button>
+            ${carryFwdBtn}
           </td>`;
         return tr;
       });
@@ -281,6 +288,25 @@
           saveDB(DB);
           await apiDeleteEmployee(id);
           await refreshFromServer();
+        }
+      }
+      if(act==='carry'){
+        try{
+          const emp = getEmployee(id);
+          const carryAmount = getCarryForwardBalance(id, state.year);
+          if(carryAmount<=0){ alert('No balance to carry forward.'); return; }
+          if(confirm(`Carry forward ${carryAmount} days from ${state.year} to ${state.year+1}?`)){
+            const nextYear = state.year + 1;
+            const ent = getEntitlement(emp, nextYear);
+            setEntitlement(emp, nextYear, (ent.carry||0)+carryAmount, ent.current||0);
+            saveDB(DB);
+            await apiSaveEmployee(emp, { carry:(ent.carry||0)+carryAmount, current:ent.current||0, year:nextYear });
+            alert(`Carried forward ${carryAmount} days to ${nextYear}.`);
+            renderEmployees();
+          }
+        }catch(err){
+          console.error('Carry forward error:', err);
+          alert('Error: ' + err?.message);
         }
       }
     });
