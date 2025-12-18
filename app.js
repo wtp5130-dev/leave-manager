@@ -839,13 +839,23 @@
     bindHolidays();
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
+    
+    // Sync fresh data from server before calculating carry-forward
+    try{
+      await refreshFromServer();
+    }catch(e){
+      console.error('Initial sync failed:', e);
+    }
+    
     renderAll();
     renderHolidays();
     initRealtime();
     
     // Auto-carry forward on app load if we're viewing 2024 or later
+    // This must run AFTER refreshFromServer so we have latest leave data
     if(state.year >= 2024){
       await autoCarryForward();
+      renderEmployees(); // Re-render to show updated carry-forward values
     }
   }
 
