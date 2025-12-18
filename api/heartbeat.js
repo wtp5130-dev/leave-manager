@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import { ensureSchema } from './db';
+import { ensureSchema } from './db.js';
 
 export const config = { runtime: 'nodejs' };
 

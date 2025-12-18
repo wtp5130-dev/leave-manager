@@ -1,4 +1,4 @@
-import { getAllData } from './db';
+import { getAllData } from './db.js';
 
 export const config = { runtime: 'nodejs' };
 

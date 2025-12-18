@@ -1,6 +1,6 @@
 import { sql } from '@vercel/postgres';
-import { ensureSchema, touchChange } from './db';
-import { broadcastChange } from './realtime';
+import { ensureSchema, touchChange } from './db.js';
+import { broadcastChange } from './realtime.js';
 
 export const config = { runtime: 'nodejs' };
 
