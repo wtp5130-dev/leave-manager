@@ -54,7 +54,7 @@
   }
 
   // Auto sync helpers
-  let autoTimer = null, debounceTimer = null;
+  let autoTimer = null, debounceTimer = null, heartbeatTimer = null;
   function scheduleDebouncedSync(){
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async ()=>{
@@ -64,9 +64,21 @@
   }
   function startAutoSync(){
     clearInterval(autoTimer);
+    clearInterval(heartbeatTimer);
     // immediate sync on start
     scheduleDebouncedSync('start');
-    autoTimer = setInterval(()=> scheduleDebouncedSync('interval'), 60_000);
+    autoTimer = setInterval(()=> scheduleDebouncedSync('interval'), 15_000);
+    // heartbeat: check for changes every 5s with light query
+    let lastSeen = DB?.meta?.updatedAt || 0;
+    heartbeatTimer = setInterval(async ()=>{
+      try{
+        const r = await fetch('/api/heartbeat');
+        if(!r.ok) return;
+        const { lastChange } = await r.json();
+        const ts = new Date(lastChange).getTime();
+        if(ts > lastSeen){ lastSeen = ts; await refreshFromServer(); }
+      }catch{}
+    }, 5000);
   }
   function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
 

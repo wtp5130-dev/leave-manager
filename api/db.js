@@ -41,6 +41,12 @@ export async function ensureSchema() {
   await sql`CREATE TABLE IF NOT EXISTS holidays (
     date TEXT PRIMARY KEY
   )`;
+
+  await sql`CREATE TABLE IF NOT EXISTS meta (
+    id INT PRIMARY KEY DEFAULT 1,
+    last_change TIMESTAMPTZ DEFAULT now()
+  )`;
+  await sql`INSERT INTO meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
 }
 
 export async function getAllData() {
@@ -78,4 +84,8 @@ export async function getAllData() {
   }));
   const holidays = holRows.map(h => h.date);
   return { employees, leaves, holidays };
+}
+
+export async function touchChange() {
+  await sql`UPDATE meta SET last_change = now() WHERE id = 1`;
 }

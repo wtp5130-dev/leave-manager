@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import { ensureSchema } from './db';
+import { ensureSchema, touchChange } from './db';
 
 export const config = { runtime: 'nodejs' };
 
@@ -17,6 +17,7 @@ export default async function handler(req, res) {
         await tx`INSERT INTO holidays (date) VALUES (${d}) ON CONFLICT (date) DO NOTHING`;
       }
     });
+    await touchChange();
     res.status(200).json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
