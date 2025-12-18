@@ -556,6 +556,7 @@
     y.value = state.year;
     y.addEventListener('change', ()=>{
       state.year = Number(y.value)||new Date().getFullYear();
+      updateYearTabs();
       $('#reportYear').value = state.year;
       $('#empEntYear').value = state.year;
       renderEmployees(); renderLeaves(); buildReportCard();
@@ -564,6 +565,28 @@
     $('#reportYear').addEventListener('change', ()=> buildReportCard());
     $('#reportEmployee').addEventListener('change', ()=> buildReportCard());
     $('#refreshReport').addEventListener('click', ()=> buildReportCard());
+    
+    // Year tabs
+    $$('.year-tab').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        state.year = Number(tab.dataset.year);
+        y.value = state.year;
+        updateYearTabs();
+        $('#reportYear').value = state.year;
+        $('#empEntYear').value = state.year;
+        renderEmployees(); renderLeaves(); buildReportCard();
+      });
+    });
+    updateYearTabs();
+  }
+  function updateYearTabs(){
+    $$('.year-tab').forEach(tab=>{
+      if(Number(tab.dataset.year)===state.year){
+        tab.classList.add('active');
+      }else{
+        tab.classList.remove('active');
+      }
+    });
   }
 
   // User & holidays

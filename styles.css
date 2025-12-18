@@ -28,6 +28,28 @@ body{
 .header-actions{display:flex;gap:8px;align-items:center}
 .year-picker{display:flex;gap:6px;align-items:center;color:var(--muted)}
 .year-picker input{width:86px}
+.year-selector{display:flex;gap:12px;align-items:center}
+.year-tabs{display:flex;gap:4px}
+.year-tab{
+  padding:6px 12px;
+  border:1px solid #334155;
+  background:transparent;
+  color:var(--muted);
+  border-radius:6px;
+  cursor:pointer;
+  font-size:0.875rem;
+  font-weight:500;
+  transition:all 0.2s;
+}
+.year-tab:hover{
+  border-color:var(--primary);
+  color:var(--text);
+}
+.year-tab.active{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:white;
+}
 .auth-box{display:flex;gap:8px;align-items:center;margin-right:8px}
 .auth-box .user{color:var(--muted);font-size:12px}
 .button, button{

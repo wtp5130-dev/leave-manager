@@ -17,9 +17,16 @@
     </div>
     <div class="header-actions">
       <div id="userInfo" class="auth-box"></div>
-      <label class="year-picker">Year
-        <input id="yearInput" type="number" min="2000" max="2100" step="1" />
-      </label>
+      <div class="year-selector">
+        <label class="year-picker">Year
+          <input id="yearInput" type="number" min="2000" max="2100" step="1" />
+        </label>
+        <div class="year-tabs">
+          <button class="year-tab" data-year="2024">2024</button>
+          <button class="year-tab" data-year="2025">2025</button>
+          <button class="year-tab" data-year="2026">2026</button>
+        </div>
+      </div>
       <button id="exportBtn" class="ghost">Export JSON</button>
       <label class="import">
         <input id="importInput" type="file" accept="application/json" hidden />
