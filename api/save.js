@@ -1,7 +1,7 @@
 import { put } from '@vercel/blob';
 
 // Use Node.js runtime for broader module support
-export const config = { runtime: 'nodejs18.x' };
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

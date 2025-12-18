@@ -1,6 +1,6 @@
 import { list } from '@vercel/blob';
 
-export const config = { runtime: 'nodejs18.x' };
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
   const id = (req.query?.id || 'default').toString().replace(/[^a-zA-Z0-9_-]/g, '');
