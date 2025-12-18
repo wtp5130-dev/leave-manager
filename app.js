@@ -311,24 +311,34 @@
 
     $('#leaveForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const id = $('#leaveId').value || nid();
-      const isNew = !DB.leaves.some(x=>x.id===id);
-      const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
-      entry.employeeId = $('#leaveEmployee').value;
-      if(!entry.employeeId){ alert('Please select an employee'); return; }
-      entry.type = $('#leaveType').value;
-      entry.status = entry.status || 'PENDING';
-      entry.applied = $('#leaveApplied').value || today();
-      entry.from = $('#leaveFrom').value;
-      entry.to = $('#leaveTo').value;
-      entry.days = Number($('#leaveDays').value) || workingDays(entry.from, entry.to);
-      entry.reason = $('#leaveReason').value.trim();
-      if(isNew) DB.leaves.push(entry);
-      saveDB(DB);
-      await apiSaveLeave(entry);
-      await refreshFromServer();
-      $('#leaveForm').reset(); $('#leaveId').value='';
-      alert('Leave saved.');
+      const submitBtn = $('#leaveForm button[type="submit"]');
+      const origText = submitBtn ? submitBtn.textContent : '';
+      try{
+        if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
+        const id = $('#leaveId').value || nid();
+        const isNew = !DB.leaves.some(x=>x.id===id);
+        const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
+        entry.employeeId = $('#leaveEmployee').value;
+        if(!entry.employeeId){ alert('Please select an employee'); return; }
+        entry.type = $('#leaveType').value;
+        entry.status = entry.status || 'PENDING';
+        entry.applied = $('#leaveApplied').value || today();
+        entry.from = $('#leaveFrom').value;
+        entry.to = $('#leaveTo').value;
+        entry.days = Number($('#leaveDays').value) || workingDays(entry.from, entry.to);
+        entry.reason = $('#leaveReason').value.trim();
+        if(isNew) DB.leaves.push(entry);
+        saveDB(DB);
+        await apiSaveLeave(entry);
+        await refreshFromServer();
+        $('#leaveForm').reset(); $('#leaveId').value='';
+        alert('Leave submitted.');
+      }catch(err){
+        console.error('Leave submit error:', err);
+        alert('Error submitting leave: ' + (err?.message || 'Unknown error'));
+      }finally{
+        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = origText || 'Submit Leave'; }
+      }
     });
 
     $('#leaveCancelBtn').addEventListener('click', ()=>{
