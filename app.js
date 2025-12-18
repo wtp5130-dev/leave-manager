@@ -179,23 +179,30 @@
     const carryFromYear = state.year - 1; // Carry FROM previous year INTO current year
     if(carryFromYear < 2024) return; // Don't carry before 2024
     
+    console.log(`=== AUTO CARRY-FORWARD: From ${carryFromYear} to ${state.year} ===`);
     let changes = false;
     for(const emp of DB.employees){
       const balance = getCarryForwardBalance(emp.id, carryFromYear);
+      const totals = annualTotalsFor(emp.id, carryFromYear);
+      console.log(`${emp.name}: Year ${carryFromYear} - Entitlement: ${totals.entitlement}, Taken: ${totals.taken}, Balance: ${totals.balance}, Carry Amount: ${balance}`);
+      
       if(balance > 0){
         const ent = getEntitlement(emp, state.year);
         const newCarry = (ent.carry||0) + balance;
+        console.log(`${emp.name}: Year ${state.year} - Before: carry=${ent.carry||0}, current=${ent.current||0}. Adding ${balance} days → newCarry=${newCarry}`);
+        
         // Only update if carry has changed
         if(newCarry !== ent.carry){
           setEntitlement(emp, state.year, newCarry, ent.current||0);
           changes = true;
-          console.log(`Auto-carried ${balance} days for ${emp.name} from ${carryFromYear} to ${state.year}`);
+          console.log(`${emp.name}: ✓ Updated carry to ${newCarry}`);
         }
       }
     }
     if(changes){
       saveDB(DB);
       await apiSaveAllEmployees();
+      console.log('=== CARRY-FORWARD COMPLETE ===');
     }
   }
   async function apiSaveAllEmployees(){
