@@ -47,6 +47,8 @@ main{padding:16px;display:grid;gap:16px}
 .controls,.filters{display:flex;gap:10px;flex-wrap:wrap}
 .search-box input, input, select, textarea{background:#0b1220;border:1px solid #334155;color:var(--text);padding:8px;border-radius:8px}
 textarea{resize:vertical}
+.cloud{display:flex;gap:6px;align-items:center}
+.cloud input{width:140px}
 
 .grid{display:grid;grid-template-columns:repeat(2, minmax(220px,1fr));gap:12px}
 .grid-span-2{grid-column:1/-1}

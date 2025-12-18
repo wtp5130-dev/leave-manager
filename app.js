@@ -9,17 +9,18 @@
   const today = () => ymd(new Date());
 
   // Storage
-  const STORE_KEY = 'leaveManagerDB.v1';
+  const STORE_KEY = 'leaveManagerDB.v2';
   const loadDB = () => {
     try{
       const raw = localStorage.getItem(STORE_KEY);
-      if(!raw) return { employees: [], leaves: [], holidays: [] };
+      if(!raw) return { meta:{updatedAt:Date.now()}, employees: [], leaves: [], holidays: [] };
       const db = JSON.parse(raw);
+      db.meta ||= {updatedAt: Date.now()};
       db.employees ||= []; db.leaves ||= []; db.holidays ||= [];
       return db;
-    }catch(e){ console.error('loadDB', e); return { employees: [], leaves: [], holidays: [] }; }
+    }catch(e){ console.error('loadDB', e); return { meta:{updatedAt:Date.now()}, employees: [], leaves: [], holidays: [] }; }
   };
-  const saveDB = (db) => localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  const saveDB = (db) => { db.meta = db.meta||{}; db.meta.updatedAt = Date.now(); localStorage.setItem(STORE_KEY, JSON.stringify(db)); };
 
   let DB = loadDB();
   let state = { year: new Date().getFullYear() };
@@ -36,6 +37,19 @@
     const res = await fetch(`/api/load?id=${encodeURIComponent(docId)}`);
     if(!res.ok) throw new Error('Cloud load failed');
     return res.json();
+  }
+  async function cloudSync(docId){
+    // If remote exists and is newer, replace local; else upload local
+    try{
+      const remote = await cloudLoad(docId);
+      const rAt = remote?.meta?.updatedAt || 0;
+      const lAt = DB?.meta?.updatedAt || 0;
+      if(rAt > lAt){ DB = remote; saveDB(DB); renderAll(); return { action:'pulled' }; }
+      await cloudSave(docId, DB); return { action:'pushed' };
+    }catch(err){
+      // If not found, push local
+      await cloudSave(docId, DB); return { action:'created' };
+    }
   }
 
   // Business days calculation (Mon-Fri excluding holidays)
@@ -208,6 +222,7 @@
       entry.employeeId = $('#leaveEmployee').value;
       if(!entry.employeeId){ alert('Please select an employee'); return; }
       entry.type = $('#leaveType').value;
+      entry.status = entry.status || 'PENDING';
       entry.applied = $('#leaveApplied').value || today();
       entry.from = $('#leaveFrom').value;
       entry.to = $('#leaveTo').value;
@@ -228,10 +243,12 @@
     const tbody = $('#leavesTable tbody');
     const empFilter = $('#filterEmployee').value || '';
     const typeFilter = $('#filterType').value || '';
+    const statusFilter = $('#filterStatus').value || '';
     const search = ($('#filterSearch').value||'').toLowerCase();
     const rows = DB.leaves
       .filter(l => !empFilter || l.employeeId===empFilter)
       .filter(l => !typeFilter || l.type===typeFilter)
+      .filter(l => !statusFilter || (l.status||'PENDING')===statusFilter)
       .filter(l => (l.reason||'').toLowerCase().includes(search))
       .sort((a,b)=> a.from.localeCompare(b.from))
       .map(l =>{
@@ -240,6 +257,7 @@
         tr.innerHTML = `
           <td>${emp.name}</td>
           <td>${l.type}</td>
+          <td>${l.status||'PENDING'}</td>
           <td>${l.applied||''}</td>
           <td>${l.from}</td>
           <td>${l.to}</td>
@@ -248,6 +266,8 @@
           <td class="actions">
             <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
             <button class="danger" data-act="del" data-id="${l.id}">Delete</button>
+            <button class="ghost" data-act="approve" data-id="${l.id}">Approve</button>
+            <button class="ghost" data-act="reject" data-id="${l.id}">Reject</button>
           </td>`;
         return tr;
       });
@@ -278,9 +298,19 @@
           renderLeaves(); renderEmployees(); buildReportCard();
         }
       }
+      if(act==='approve' || act==='reject'){
+        const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+        const user = getCurrentUser();
+        if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
+        l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
+        l.approvedBy = user.name||'Manager';
+        l.approvedAt = today();
+        saveDB(DB); renderLeaves(); buildReportCard();
+      }
     });
     $('#filterEmployee').addEventListener('change', renderLeaves);
     $('#filterType').addEventListener('change', renderLeaves);
+    $('#filterStatus').addEventListener('change', renderLeaves);
     $('#filterSearch').addEventListener('input', renderLeaves);
   }
 
@@ -405,6 +435,71 @@
     $('#reportYear').addEventListener('change', ()=> buildReportCard());
   }
 
+  // User & holidays
+  function getCurrentUser(){
+    try{ return JSON.parse(localStorage.getItem('leaveManager.user')||'{}'); }catch{ return {}; }
+  }
+  function setCurrentUser(user){ localStorage.setItem('leaveManager.user', JSON.stringify(user)); }
+  function bindUser(){
+    const user = getCurrentUser();
+    $('#currentUserName').value = user.name||'';
+    $('#currentUserRole').value = user.role||'EMPLOYEE';
+    $('#userForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      setCurrentUser({ name: $('#currentUserName').value.trim(), role: $('#currentUserRole').value });
+      alert('User saved.');
+    });
+  }
+  function renderHolidays(){
+    $('#holYear').value = state.year;
+    const tbody = $('#holidaysTable tbody');
+    const items = (DB.holidays||[]).map(d=>({ date:d, name:'' }));
+    tbody.innerHTML = items.map(h=>`<tr><td>${h.date}</td><td>${h.name||''}</td><td><button class="danger" data-date="${h.date}" data-act="del-hol">Remove</button></td></tr>`).join('') || '<tr><td colspan="3">No holidays configured.</td></tr>';
+  }
+  function bindHolidays(){
+    $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; $('#yearInput').value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
+    $('#holAddBtn').addEventListener('click', ()=>{
+      const d = $('#holAddDate').value; if(!d) return;
+      if(!DB.holidays.includes(d)) DB.holidays.push(d);
+      saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+    });
+    $('#fetchHolidays').addEventListener('click', async ()=>{
+      const year = Number($('#holYear').value)||state.year; const cc = ($('#holCountry').value||'').toUpperCase();
+      if(!cc){ alert('Enter 2-letter country code, e.g., SG'); return; }
+      try{
+        const r = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`);
+        if(!r.ok) throw new Error('Failed');
+        const list = await r.json();
+        const dates = list.map(x=>x.date); // ISO YYYY-MM-DD
+        const set = new Set(DB.holidays||[]);
+        dates.forEach(d=>set.add(d));
+        DB.holidays = Array.from(set).sort();
+        saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+      }catch(err){ alert('Could not fetch holidays. Check the country code or try later.'); }
+    });
+    $('#holidaysTable').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      if(btn.dataset.act==='del-hol'){
+        const d = btn.dataset.date; DB.holidays = (DB.holidays||[]).filter(x=>x!==d); saveDB(DB); renderHolidays(); renderLeaves(); buildReportCard();
+      }
+    });
+  }
+
+  // Cloud SYNC UI
+  function bindCloudSync(){
+    const status = (msg) => { const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; };
+    const getId = () => (document.getElementById('cloudDocId')?.value||'default').trim() || 'default';
+    const syncBtn = document.getElementById('cloudSaveBtn'); // repurpose as Sync
+    const loadBtn = document.getElementById('cloudLoadBtn'); // hide
+    if(loadBtn) loadBtn.style.display = 'none';
+    if(syncBtn){
+      syncBtn.textContent = 'Sync';
+      syncBtn.addEventListener('click', async ()=>{
+        try{ status('Syncing...'); const res = await cloudSync(getId()); status(`Synced (${res.action}).`); }
+        catch(e){ console.error(e); status('Sync failed'); alert('Cloud sync failed.'); }
+      });
+    }
+  }
   // Cloud controls
   function bindCloudSync(){
     const status = (msg) => { const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; };
@@ -442,7 +537,10 @@
     bindImportExport();
     bindPrint();
     bindCloudSync();
+    bindUser();
+    bindHolidays();
     renderAll();
+    renderHolidays();
   }
 
   // Kickoff

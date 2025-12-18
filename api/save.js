@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const bodyText = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
   try {
     const blob = await put(`leave/${id}.json`, bodyText, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType: 'application/json',
       cacheControlMaxAge: 0

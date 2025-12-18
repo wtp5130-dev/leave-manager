@@ -11,7 +11,8 @@ export default async function handler(req, res) {
       return;
     }
     const url = l.blobs[0].url;
-    const r = await fetch(url);
+    // For private blobs, include the token to download
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } });
     const text = await r.text();
     res.setHeader('content-type', 'application/json');
     res.status(200).send(text);
