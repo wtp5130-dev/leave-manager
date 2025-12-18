@@ -16,6 +16,19 @@ export async function ensureSchema() {
     updated_at TIMESTAMPTZ DEFAULT now()
   )`;
 
+  // Add missing columns if they don't exist
+  try {
+    await sql`ALTER TABLE employees ADD COLUMN email TEXT`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  try {
+    await sql`ALTER TABLE employees ADD COLUMN role TEXT DEFAULT 'EMPLOYEE'`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   await sql`CREATE TABLE IF NOT EXISTS entitlements (
     employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
     year INT NOT NULL,
