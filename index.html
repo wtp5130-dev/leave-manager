@@ -47,20 +47,28 @@
     <!-- Employees -->
     <section id="tab-employees" class="tab-content active" aria-labelledby="Employees">
       <div class="panel">
-        <h2>Add / Edit Employee</h2>
+        <h2>Add / Edit Employee & User</h2>
         <form id="employeeForm" class="grid">
           <input type="hidden" id="employeeId" />
           <label>Name<input id="empName" required /></label>
+          <label>Email (Sign-in)<input id="empEmail" type="email" /></label>
           <label>Job Title<input id="empTitle" /></label>
           <label>Department<input id="empDept" /></label>
           <label>Date Joined<input id="empJoined" type="date" /></label>
+          <label>User Role
+            <select id="empRole">
+              <option value="EMPLOYEE">Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="HR">HR</option>
+            </select>
+          </label>
           <div class="grid-span-2"></div>
           <h3 class="grid-span-2">Annual Leave Entitlement</h3>
           <label>Year<input id="empEntYear" type="number" min="2000" max="2100" /></label>
           <label>Carry Forward (days)<input id="empCarry" type="number" step="0.5" min="0" /></label>
           <label>Current Year (days)<input id="empCurrent" type="number" step="0.5" min="0" /></label>
           <div class="form-actions grid-span-2">
-            <button type="submit" class="primary">Save Employee</button>
+            <button type="submit" class="primary">Save Employee & User</button>
             <button type="reset" id="employeeCancelBtn" class="ghost">Clear</button>
           </div>
         </form>
@@ -68,7 +76,7 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h2>Employees</h2>
+          <h2>Employees & Users</h2>
           <div class="search-box"><input id="employeeSearch" placeholder="Search employees..." /></div>
         </div>
         <div class="table-wrap">
@@ -76,6 +84,8 @@
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
                 <th>Job Title</th>
                 <th>Dept</th>
                 <th>Date Joined</th>
@@ -85,26 +95,6 @@
                 <th></th>
               </tr>
             </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="panel" id="usersPanel" style="display:none;">
-        <h2>Manage Users (Sign-In Access)</h2>
-        <div class="controls">
-          <input id="newUserEmail" type="email" placeholder="Email" />
-          <input id="newUserName" type="text" placeholder="Full Name" />
-          <select id="newUserRole">
-            <option value="EMPLOYEE">Employee</option>
-            <option value="MANAGER">Manager</option>
-            <option value="HR">HR</option>
-          </select>
-          <button id="addUserBtn" class="primary">Add User</button>
-        </div>
-        <div class="table-wrap">
-          <table class="table" id="usersTable">
-            <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

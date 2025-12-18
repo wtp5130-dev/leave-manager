@@ -38,7 +38,7 @@
     return r.json();
   }
   async function apiSaveEmployee(emp, ent){
-    const r = await fetch('/api/employee', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:emp.id, name:emp.name, jobTitle:emp.jobTitle, department:emp.department, dateJoined:emp.dateJoined, entitlement: ent ? {year: state.year, ...ent} : undefined }) });
+    const r = await fetch('/api/employee', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:emp.id, name:emp.name, email:emp.email, role:emp.role, jobTitle:emp.jobTitle, department:emp.department, dateJoined:emp.dateJoined, entitlement: ent ? {year: state.year, ...ent} : undefined }) });
     if(!r.ok) throw new Error('Employee save failed');
   }
   async function apiDeleteEmployee(id){ const r = await fetch(`/api/employee-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Employee delete failed'); }
@@ -172,12 +172,14 @@
     const tbody = $('#employeesTable tbody');
     const q = ($('#employeeSearch').value||'').toLowerCase();
     const rows = DB.employees
-      .filter(e => `${e.name} ${e.jobTitle||''} ${e.department||''}`.toLowerCase().includes(q))
+      .filter(e => `${e.name} ${e.jobTitle||''} ${e.department||''} ${e.email||''}`.toLowerCase().includes(q))
       .map(emp =>{
         const totals = annualTotalsFor(emp.id, state.year);
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${emp.name||''}</td>
+          <td>${emp.email||''}</td>
+          <td>${emp.role||'EMPLOYEE'}</td>
           <td>${emp.jobTitle||''}</td>
           <td>${emp.department||''}</td>
           <td>${emp.dateJoined||''}</td>
@@ -196,6 +198,8 @@
   function fillEmployeeForm(emp){
     $('#employeeId').value = emp?.id || '';
     $('#empName').value = emp?.name || '';
+    $('#empEmail').value = emp?.email || '';
+    $('#empRole').value = emp?.role || 'EMPLOYEE';
     $('#empTitle').value = emp?.jobTitle || '';
     $('#empDept').value = emp?.department || '';
     $('#empJoined').value = emp?.dateJoined || '';
@@ -214,16 +218,40 @@
       emp.jobTitle = $('#empTitle').value.trim();
       emp.department = $('#empDept').value.trim();
       emp.dateJoined = $('#empJoined').value || '';
+      
+      // User fields
+      const email = $('#empEmail').value.trim();
+      const role = $('#empRole').value;
+      
       const entYear = Number($('#empEntYear').value)||state.year;
       const carry = Number($('#empCarry').value)||0;
       const current = Number($('#empCurrent').value)||0;
       setEntitlement(emp, entYear, carry, current);
       if(isNew) DB.employees.push(emp);
       saveDB(DB);
+      
+      // Save employee
       await apiSaveEmployee(emp, { carry, current });
+      
+      // Save or update user if email is provided
+      if(email){
+        try{
+          await apiCreateUser(email, emp.name, role);
+        }catch(e){
+          // User might already exist, try updating instead
+          if(e.message.includes('already exists')){
+            // Find user by email and update
+            console.log('User already exists, skipping user creation');
+          }else{
+            console.error('User save error:', e);
+            alert('Warning: Employee saved but user creation failed: ' + e.message);
+          }
+        }
+      }
+      
       await refreshFromServer();
       fillEmployeeForm(null);
-      alert('Employee saved.');
+      alert('Employee & User saved.');
     });
     $('#employeeCancelBtn').addEventListener('click', ()=> fillEmployeeForm(null));
 
@@ -563,53 +591,8 @@
   }
   
   function bindUsers(){
-    const usersPanel = $('#usersPanel');
-    const currentUser = getCurrentUser();
-    if(currentUser && (currentUser.role === 'HR' || currentUser.role === 'MANAGER')){
-      usersPanel.style.display = 'block';
-    }
-    
-    $('#addUserBtn').addEventListener('click', async ()=>{
-      const email = $('#newUserEmail').value.trim();
-      const name = $('#newUserName').value.trim();
-      const role = $('#newUserRole').value;
-      if(!email || !name){ alert('Email and name required'); return; }
-      try{
-        await apiCreateUser(email, name, role);
-        $('#newUserEmail').value = '';
-        $('#newUserName').value = '';
-        alert('User added successfully');
-        await renderUsers();
-      }catch(e){ alert('Error: ' + e.message); }
-    });
-    
-    $('#usersTable').addEventListener('change', async (e)=>{
-      if(e.target.classList.contains('user-role')){
-        const id = e.target.dataset.id;
-        const role = e.target.value;
-        try{
-          await apiUpdateUserRole(id, role);
-          alert('Role updated');
-        }catch(err){ alert('Error: ' + err.message); e.target.value = e.target.dataset.prevRole; }
-      }
-    });
-    
-    $('#usersTable').addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button');
-      if(!btn) return;
-      if(btn.dataset.act === 'del-user'){
-        const id = btn.dataset.id;
-        if(confirm('Remove this user?')){
-          try{
-            await apiDeleteUser(id);
-            alert('User removed');
-            await renderUsers();
-          }catch(err){ alert('Error: ' + err.message); }
-        }
-      }
-    });
-    
-    renderUsers();
+    // Users are now managed with employees - this function is kept empty for compatibility
+    // User management is integrated into bindEmployeeForm
   }
   
   function renderHolidays(){

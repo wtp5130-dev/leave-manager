@@ -10,12 +10,12 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const { requireAuth } = await import('./auth-helpers.js');
     const authed = requireAuth(req, res, ['HR','MANAGER']); if(!authed) return;
-    const { id, name, jobTitle, department, dateJoined, entitlement } = req.body || {};
+    const { id, name, jobTitle, department, dateJoined, email, role, entitlement } = req.body || {};
     if (!id || !name) return res.status(400).json({ ok: false, error: 'id and name required' });
 
-    await sql`INSERT INTO employees (id, name, job_title, department, date_joined)
-              VALUES (${id}, ${name}, ${jobTitle||null}, ${department||null}, ${dateJoined||null})
-              ON CONFLICT (id) DO UPDATE SET name=excluded.name, job_title=excluded.job_title, department=excluded.department, date_joined=excluded.date_joined, updated_at=now()`;
+    await sql`INSERT INTO employees (id, name, job_title, department, date_joined, email, role)
+              VALUES (${id}, ${name}, ${jobTitle||null}, ${department||null}, ${dateJoined||null}, ${email||null}, ${role||'EMPLOYEE'})
+              ON CONFLICT (id) DO UPDATE SET name=excluded.name, job_title=excluded.job_title, department=excluded.department, date_joined=excluded.date_joined, email=excluded.email, role=excluded.role, updated_at=now()`;
 
     if (entitlement && entitlement.year) {
       await sql`INSERT INTO entitlements (employee_id, year, carry, current)
