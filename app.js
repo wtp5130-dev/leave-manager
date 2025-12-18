@@ -10,6 +10,7 @@
 
   // Storage
   const STORE_KEY = 'leaveManagerDB.v2';
+  const DOC_ID_KEY = 'leaveManager.docId';
   const loadDB = () => {
     try{
       const raw = localStorage.getItem(STORE_KEY);
@@ -20,7 +21,12 @@
       return db;
     }catch(e){ console.error('loadDB', e); return { meta:{updatedAt:Date.now()}, employees: [], leaves: [], holidays: [] }; }
   };
-  const saveDB = (db) => { db.meta = db.meta||{}; db.meta.updatedAt = Date.now(); localStorage.setItem(STORE_KEY, JSON.stringify(db)); };
+  const saveDB = (db) => {
+    db.meta = db.meta||{}; db.meta.updatedAt = Date.now();
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+    // mark dirty and schedule a quick sync
+    scheduleDebouncedSync('local-change');
+  };
 
   let DB = loadDB();
   let state = { year: new Date().getFullYear() };
@@ -51,6 +57,25 @@
       await cloudSave(docId, DB); return { action:'created' };
     }
   }
+
+  // Auto sync helpers
+  const getDocId = () => (localStorage.getItem(DOC_ID_KEY) || document.getElementById('cloudDocId')?.value || 'default').trim() || 'default';
+  const setDocId = (id) => { localStorage.setItem(DOC_ID_KEY, id); const el = document.getElementById('cloudDocId'); if(el) el.value = id; };
+  let autoTimer = null, debounceTimer = null;
+  function scheduleDebouncedSync(){
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async ()=>{
+      try{ setStatus('Syncing...'); const res = await cloudSync(getDocId()); setStatus(`Synced (${res.action}).`); }
+      catch(e){ console.error(e); setStatus('Sync error'); }
+    }, 1200);
+  }
+  function startAutoSync(){
+    clearInterval(autoTimer);
+    // immediate sync on start
+    scheduleDebouncedSync('start');
+    autoTimer = setInterval(()=> scheduleDebouncedSync('interval'), 60_000);
+  }
+  function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
 
   // Business days calculation (Mon-Fri excluding holidays)
   function isWeekend(date){ const day = date.getDay(); return day===0 || day===6; }
@@ -487,18 +512,25 @@
 
   // Cloud SYNC UI
   function bindCloudSync(){
-    const status = (msg) => { const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; };
-    const getId = () => (document.getElementById('cloudDocId')?.value||'default').trim() || 'default';
     const syncBtn = document.getElementById('cloudSaveBtn'); // repurpose as Sync
     const loadBtn = document.getElementById('cloudLoadBtn'); // hide
     if(loadBtn) loadBtn.style.display = 'none';
     if(syncBtn){
       syncBtn.textContent = 'Sync';
-      syncBtn.addEventListener('click', async ()=>{
-        try{ status('Syncing...'); const res = await cloudSync(getId()); status(`Synced (${res.action}).`); }
-        catch(e){ console.error(e); status('Sync failed'); alert('Cloud sync failed.'); }
-      });
+      syncBtn.addEventListener('click', ()=> scheduleDebouncedSync('manual'));
     }
+    // Persist doc id and trigger sync on change
+    const idInput = document.getElementById('cloudDocId');
+    const savedId = localStorage.getItem(DOC_ID_KEY) || 'default';
+    if(idInput) idInput.value = savedId;
+    idInput?.addEventListener('change', ()=>{ setDocId(idInput.value.trim()||'default'); scheduleDebouncedSync('docid-change'); });
+
+    // auto sync cycle + online/visibility awareness
+    startAutoSync();
+    window.addEventListener('online', ()=> scheduleDebouncedSync('online'));
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) scheduleDebouncedSync('tab-focus'); });
+    // cross-tab localStorage updates
+    window.addEventListener('storage', (e)=>{ if(e.key===STORE_KEY) { DB = loadDB(); renderAll(); scheduleDebouncedSync('storage'); } });
   }
   // Cloud controls
   function bindCloudSync(){
