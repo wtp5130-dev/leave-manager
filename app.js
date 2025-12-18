@@ -174,35 +174,42 @@
     if(state.autoCarryDone) return;
     state.autoCarryDone = true;
     
-    // Automatically carry forward unused annual leave from current year to next year
-    // Rule: If balance >= 5, carry 5. If 0 < balance < 5, carry the balance value.
-    const carryFromYear = state.year - 1; // Carry FROM previous year INTO current year
-    if(carryFromYear < 2024) return; // Don't carry before 2024
+    // Automatically carry forward unused annual leave for all years
+    // Process: 2024→2025, 2025→2026, etc.
+    const yearsToProcess = [2024, 2025, 2026]; // Years to process carries FROM
     
-    console.log(`=== AUTO CARRY-FORWARD: From ${carryFromYear} to ${state.year} ===`);
+    console.log(`=== AUTO CARRY-FORWARD: Processing years ${yearsToProcess.join(', ')} ===`);
     let changes = false;
-    for(const emp of DB.employees){
-      const balance = getCarryForwardBalance(emp.id, carryFromYear);
-      const totals = annualTotalsFor(emp.id, carryFromYear);
-      console.log(`${emp.name}: Year ${carryFromYear} - Entitlement: ${totals.entitlement}, Taken: ${totals.taken}, Balance: ${totals.balance}, Carry Amount: ${balance}`);
+    
+    for(const fromYear of yearsToProcess){
+      const toYear = fromYear + 1;
+      console.log(`\n--- Carrying from ${fromYear} to ${toYear} ---`);
       
-      if(balance > 0){
-        const ent = getEntitlement(emp, state.year);
-        const newCarry = (ent.carry||0) + balance;
-        console.log(`${emp.name}: Year ${state.year} - Before: carry=${ent.carry||0}, current=${ent.current||0}. Adding ${balance} days → newCarry=${newCarry}`);
+      for(const emp of DB.employees){
+        const balance = getCarryForwardBalance(emp.id, fromYear);
+        const totals = annualTotalsFor(emp.id, fromYear);
+        console.log(`${emp.name}: Year ${fromYear} - Entitlement: ${totals.entitlement}, Taken: ${totals.taken}, Balance: ${totals.balance}, Carry Amount: ${balance}`);
         
-        // Only update if carry has changed
-        if(newCarry !== ent.carry){
-          setEntitlement(emp, state.year, newCarry, ent.current||0);
-          changes = true;
-          console.log(`${emp.name}: ✓ Updated carry to ${newCarry}`);
+        if(balance > 0){
+          const ent = getEntitlement(emp, toYear);
+          const currentCarry = ent.carry||0;
+          const newCarry = currentCarry + balance;
+          console.log(`${emp.name}: Year ${toYear} - Before: carry=${currentCarry}, current=${ent.current||0}. Adding ${balance} days → newCarry=${newCarry}`);
+          
+          // Only update if carry has changed
+          if(newCarry !== currentCarry){
+            setEntitlement(emp, toYear, newCarry, ent.current||0);
+            changes = true;
+            console.log(`${emp.name}: ✓ Updated carry to ${newCarry}`);
+          }
         }
       }
     }
+    
     if(changes){
       saveDB(DB);
       await apiSaveAllEmployees();
-      console.log('=== CARRY-FORWARD COMPLETE ===');
+      console.log('\n=== CARRY-FORWARD COMPLETE ===');
     }
   }
   async function apiSaveAllEmployees(){
