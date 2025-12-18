@@ -169,6 +169,42 @@
     const totals = annualTotalsFor(empId, year);
     return Math.min(5, Math.max(0, totals.balance)); // Cap at 5 days maximum
   }
+  async function resetCarryForward(){
+    // Reset all carry-forward values to correct amounts (max 5 per year pair)
+    // This fixes any incorrect manual entries
+    console.log('=== RESETTING CARRY-FORWARD TO CORRECT VALUES ===');
+    const yearsToProcess = [2024, 2025, 2026];
+    let changes = false;
+    
+    for(const fromYear of yearsToProcess){
+      const toYear = fromYear + 1;
+      console.log(`\n--- Resetting ${fromYear}→${toYear} ---`);
+      
+      for(const emp of DB.employees){
+        const balance = getCarryForwardBalance(emp.id, fromYear); // This gives us the max 5 days
+        const ent = getEntitlement(emp, toYear);
+        const currentCarry = ent.carry||0;
+        
+        console.log(`${emp.name}: Year ${toYear} - Current carry: ${currentCarry}, Should be: ${balance}`);
+        
+        if(currentCarry !== balance){
+          console.log(`${emp.name}: ✓ Correcting carry from ${currentCarry} to ${balance}`);
+          setEntitlement(emp, toYear, balance, ent.current||0);
+          changes = true;
+        }
+      }
+    }
+    
+    if(changes){
+      saveDB(DB);
+      await apiSaveAllEmployees();
+      console.log('\n=== RESET COMPLETE ===');
+      alert('Carry-forward values reset to correct amounts. Refreshing...');
+      location.reload();
+    }else{
+      console.log('\n=== ALL CARRY VALUES ALREADY CORRECT ===');
+    }
+  }
   async function autoCarryForward(){
     // Only run once per app session to avoid duplicate carries
     if(state.autoCarryDone) return;
@@ -771,6 +807,17 @@
     });
   }
   
+  function bindMaintenanceButtons(){
+    const resetBtn = $('#resetCarryForwardBtn');
+    if(resetBtn){
+      resetBtn.addEventListener('click', async ()=>{
+        if(confirm('This will reset all carry-forward values to correct amounts (max 5 days per year). Continue?')){
+          await resetCarryForward();
+        }
+      });
+    }
+  }
+
   // User management
   async function renderUsers(){
     try{
@@ -863,6 +910,7 @@
     bindPrint();
     bindUser();
     bindHolidays();
+    bindMaintenanceButtons();
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
     
