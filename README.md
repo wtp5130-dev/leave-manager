@@ -28,7 +28,12 @@ Deploy to GitHub + Vercel
 		 - git push -u origin main
 2) Import the repo in Vercel (New Project → Import from GitHub). Framework: “Other” (Static).
 3) Add Vercel Postgres: In Vercel → Storage → Postgres → Create and Link to this project. Vercel will add POSTGRES_URL environment variables automatically.
-4) Redeploy. The app will read/write via API routes to the database. Use Sync to pull latest.
+4) Realtime (optional but recommended): Add Pusher Channels from the Pusher dashboard and add these Environment Variables in Vercel → Project → Settings → Environment Variables
+	- PUSHER_APP_ID
+	- PUSHER_KEY (public)
+	- PUSHER_SECRET
+	- PUSHER_CLUSTER (e.g., ap1, us3)
+	Redeploy. Clients will auto‑refresh within seconds on any change.
 
 Notes on privacy
 - The demo config stores blobs as public for simplicity. Switch to private access in api/save.js and implement signed downloads if you need privacy.

@@ -80,6 +80,20 @@
       }catch{}
     }, 5000);
   }
+
+  // Realtime via Pusher Channels
+  async function initRealtime(){
+    try{
+      if(!(window).Pusher) return; // SDK not loaded
+      const cfgRes = await fetch('/api/realtime-config');
+      if(!cfgRes.ok) return;
+      const { key, cluster } = await cfgRes.json();
+      if(!key || !cluster) return;
+      const p = new window.Pusher(key, { cluster, authTransport: 'ajax' });
+      const channel = p.subscribe('leave-manager');
+      channel.bind('changed', async () => { await refreshFromServer(); });
+    }catch(e){ /* ignore */ }
+  }
   function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
 
   // Business days calculation (Mon-Fri excluding holidays)
@@ -553,6 +567,7 @@
     bindHolidays();
     renderAll();
     renderHolidays();
+    initRealtime();
   }
 
   // Kickoff

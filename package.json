@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^0.24.0",
-    "@vercel/postgres": "^0.10.0"
+    "@vercel/postgres": "^0.10.0",
+    "pusher": "^5.1.3"
   }
 }
