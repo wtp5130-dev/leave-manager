@@ -174,7 +174,7 @@
           if(isNew) DB.leaves.push(entry);
           saveDB(DB);
           // Optimistic UI update – show immediately
-          renderReportLeaves(); buildReportCard();
+          renderReportLeaves(); buildReportCard(); updateInbox();
           await apiSaveLeave(entry);
           await refreshFromServer();
           form.reset(); if(idEl) idEl.value='';
@@ -269,6 +269,43 @@
     }catch(e){ /* ignore */ }
   }
   function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
+
+  // Inbox (pending leaves) for Manager/HR
+  function updateInbox(){
+    try{
+      const user = getCurrentUser();
+      const btn = document.getElementById('inboxBtn');
+      const countEl = document.getElementById('inboxCount');
+      const panel = document.getElementById('inboxDropdown');
+      if(!btn || !countEl || !panel) return;
+      const isManager = user && (user.role==='MANAGER' || user.role==='HR');
+      // Hide inbox for employees
+      btn.style.display = isManager ? '' : 'none';
+      if(!isManager){ panel.style.display='none'; return; }
+      const pending = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING');
+      countEl.textContent = String(pending.length);
+      if(pending.length===0){ panel.innerHTML = '<div class="panel"><p>No pending applications.</p></div>'; return; }
+      const items = pending
+        .sort((a,b)=> (a.applied||'').localeCompare(b.applied||''))
+        .slice(0,100)
+        .map(l=>{
+          const emp = getEmployee(l.employeeId)||{name:'[deleted]'};
+          return `<div class="panel" style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <div>
+                <strong>${emp.name}</strong> • ${l.type}
+                <div style="color:var(--muted);font-size:12px">${l.from||''} → ${l.to||''} • Applied ${l.applied||''}</div>
+              </div>
+              <div class="actions">
+                <button class="ghost" data-inbox-act="approve" data-id="${l.id}">Approve</button>
+                <button class="ghost" data-inbox-act="reject" data-id="${l.id}">Reject</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      panel.innerHTML = items;
+    }catch(e){ console.warn('updateInbox error:', e); }
+  }
 
   // Business days calculation (Mon-Fri excluding holidays)
   function isWeekend(date){ const day = date.getDay(); return day===0 || day===6; }
@@ -964,6 +1001,30 @@
     if(gotoEmp){
       gotoEmp.addEventListener('click', ()=> activateTab('employees'));
     }
+    // Inbox interactions
+    const inboxBtn = document.getElementById('inboxBtn');
+    const panel = document.getElementById('inboxDropdown');
+    if(inboxBtn && panel){
+      inboxBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        panel.style.display = (panel.style.display==='none' || panel.style.display==='') ? 'block' : 'none';
+      });
+      document.addEventListener('click', (e)=>{ if(!panel.contains(e.target) && e.target!==inboxBtn){ panel.style.display='none'; } });
+      panel.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button'); if(!btn) return;
+        const act = btn.dataset.inboxAct; const id = btn.dataset.id;
+        if(!act || !id) return;
+        try{
+          const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+          const user = getCurrentUser(); if(!['MANAGER','HR'].includes(user.role)) return;
+          l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
+          l.approvedBy = user.name||'Manager';
+          l.approvedAt = today();
+          saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+          updateInbox(); buildReportCard(); renderReportLeaves();
+        }catch(err){ console.error('Inbox action error:', err); alert('Action failed: ' + (err?.message||'Unknown')); }
+      });
+    }
   }
 
   // Calendar
@@ -1579,6 +1640,7 @@
     renderLeaves();
     buildReportCard();
     renderReportLeaves();
+    updateInbox();
     try{
       updateCalendarEmployeeFilter();
       renderCalendar();

@@ -24,6 +24,9 @@
       <div class="button-group">
         <button id="printCardBtn" class="primary">Print Card</button>
         <button id="gotoEmployeesBtn" class="ghost" title="Go to Employees">Employees</button>
+        <button id="inboxBtn" class="ghost" title="Pending leave applications" style="position:relative;">
+          Inbox <span id="inboxCount" class="badge">0</span>
+        </button>
       </div>
       
       <!-- Data Management -->
@@ -173,7 +176,7 @@
           <label>Working Days (auto)<input id="reportLeaveDays" type="number" step="0.5" min="0" readonly /></label>
           <label class="grid-span-2">Reason<textarea id="reportLeaveReason" rows="2" placeholder="Optional"></textarea></label>
           <div class="form-actions grid-span-2">
-            <button type="submit" class="primary">Submit Leave</button>
+            <button type="submit" class="primary">Apply Leave</button>
             <button type="reset" id="reportLeaveCancelBtn" class="ghost">Clear</button>
           </div>
         </form>
@@ -329,6 +332,9 @@
   <footer class="app-footer">
     <small>Leave Manager • Local-only demo. Use Export for backups.</small>
   </footer>
+
+  <!-- Simple inbox dropdown container -->
+  <div id="inboxDropdown" class="panel" style="position:fixed; right:16px; top:58px; width:420px; max-height:60vh; overflow:auto; display:none; z-index:20;"></div>
 
   <script src="app.js"></script>
 </body>

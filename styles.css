@@ -57,6 +57,7 @@ body{
   padding:8px 14px;border-radius:8px;cursor:pointer;transition:.2s ease;border-color:#334155;
   font-size:14px;font-weight:500;white-space:nowrap
 }
+.badge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;line-height:18px;text-align:center}
 button:hover{background:#1e293b;border-color:#475569}
 button.primary{background:var(--primary);border-color:var(--primary-600);color:white}
 button.primary:hover{background:var(--primary-600);filter:brightness(1.1)}
