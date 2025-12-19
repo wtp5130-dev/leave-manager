@@ -70,6 +70,125 @@
     renderAll();
   }
 
+  // Report: inline leave management helpers and bindings
+  function recomputeReportLeaveDays(){
+    const fromEl = document.getElementById('reportLeaveFrom');
+    const toEl = document.getElementById('reportLeaveTo');
+    const daysEl = document.getElementById('reportLeaveDays');
+    if(!fromEl || !toEl || !daysEl) return;
+    const from = fromEl.value, to = toEl.value;
+    if(!from || !to){ daysEl.value = ''; return; }
+    daysEl.value = String(workingDays(from,to));
+  }
+
+  function renderReportLeaves(){
+    const tbody = document.querySelector('#reportLeavesTable tbody');
+    if(!tbody) return;
+    const empId = state.selectedEmployee || (DB.employees[0]?.id||'');
+    const year = state.year;
+    const rows = (DB.leaves||[])
+      .filter(l => l.employeeId===empId)
+      .filter(l => workingDaysInYear(l.from,l.to,year) > 0)
+      .sort((a,b)=> (a.from||'').localeCompare(b.from||''))
+      .map(l=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${l.type}</td>
+          <td>${l.status||'PENDING'}</td>
+          <td>${l.applied||''}</td>
+          <td>${l.from||''}</td>
+          <td>${l.to||''}</td>
+          <td>${l.days ?? workingDays(l.from,l.to)}</td>
+          <td>${l.reason||''}</td>
+          <td class="actions">
+            <button class="ghost" data-act="report-edit" data-id="${l.id}">Edit</button>
+            <button class="danger" data-act="report-del" data-id="${l.id}">Delete</button>
+            <button class="ghost" data-act="report-approve" data-id="${l.id}">Approve</button>
+            <button class="ghost" data-act="report-reject" data-id="${l.id}">Reject</button>
+          </td>`;
+        return tr;
+      });
+    tbody.innerHTML = '';
+    rows.forEach(r=>tbody.appendChild(r));
+  }
+
+  function bindReportLeaves(){
+    const from = document.getElementById('reportLeaveFrom');
+    const to = document.getElementById('reportLeaveTo');
+    const type = document.getElementById('reportLeaveType');
+    if(from) from.addEventListener('change', recomputeReportLeaveDays);
+    if(to) to.addEventListener('change', recomputeReportLeaveDays);
+    if(type) type.addEventListener('change', recomputeReportLeaveDays);
+
+    const form = document.getElementById('reportLeaveForm');
+    if(form){
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        try{
+          const idEl = document.getElementById('reportLeaveId');
+          const id = (idEl?.value) || nid();
+          const isNew = !DB.leaves.some(x=>x.id===id);
+          const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
+          entry.employeeId = state.selectedEmployee || (DB.employees[0]?.id||'');
+          if(!entry.employeeId){ alert('Please select an employee'); return; }
+          entry.type = document.getElementById('reportLeaveType').value;
+          entry.status = entry.status || 'PENDING';
+          entry.applied = document.getElementById('reportLeaveApplied').value || today();
+          entry.from = document.getElementById('reportLeaveFrom').value;
+          entry.to = document.getElementById('reportLeaveTo').value;
+          entry.days = Number(document.getElementById('reportLeaveDays').value) || workingDays(entry.from, entry.to);
+          entry.reason = (document.getElementById('reportLeaveReason').value||'').trim();
+          if(isNew) DB.leaves.push(entry);
+          saveDB(DB);
+          await apiSaveLeave(entry);
+          await refreshFromServer();
+          form.reset(); if(idEl) idEl.value='';
+          buildReportCard(); renderReportLeaves();
+          alert('Leave submitted.');
+        }catch(err){ console.error('Report leave submit error:', err); alert('Error: ' + (err?.message||'Unknown')); }
+      });
+      const cancel = document.getElementById('reportLeaveCancelBtn');
+      if(cancel){ cancel.addEventListener('click', ()=>{ form.reset(); const idEl = document.getElementById('reportLeaveId'); if(idEl) idEl.value=''; }); }
+    }
+
+    const table = document.getElementById('reportLeavesTable');
+    if(table){
+      table.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button'); if(!btn) return;
+        const id = btn.dataset.id; const act = btn.dataset.act;
+        if(act==='report-edit'){
+          const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+          document.getElementById('reportLeaveId').value = l.id;
+          document.getElementById('reportLeaveType').value = l.type;
+          document.getElementById('reportLeaveApplied').value = l.applied||'';
+          document.getElementById('reportLeaveFrom').value = l.from||'';
+          document.getElementById('reportLeaveTo').value = l.to||'';
+          document.getElementById('reportLeaveDays').value = l.days ?? workingDays(l.from,l.to);
+          document.getElementById('reportLeaveReason').value = l.reason||'';
+        }
+        if(act==='report-del'){
+          if(confirm('Delete this leave entry?')){
+            DB.leaves = DB.leaves.filter(x=>x.id!==id); saveDB(DB);
+            await apiDeleteLeave(id);
+            await refreshFromServer();
+            buildReportCard(); renderReportLeaves();
+          }
+        }
+        if(act==='report-approve' || act==='report-reject'){
+          try{
+            const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+            const user = getCurrentUser(); if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
+            l.status = (act==='report-approve') ? 'APPROVED' : 'REJECTED';
+            l.approvedBy = user.name||'Manager';
+            l.approvedAt = today();
+            saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+            buildReportCard(); renderReportLeaves();
+          }catch(err){ console.error('Approve/Reject error:', err); alert('Error: ' + (err?.message||'Unknown')); }
+        }
+      });
+    }
+  }
+
   // Auto sync helpers
   let autoTimer = null, debounceTimer = null, heartbeatTimer = null;
   function scheduleDebouncedSync(){
@@ -290,6 +409,10 @@
         renderEmployees(); // Show this employee's data
         renderLeaves(); // Show this employee's leaves
         buildReportCard(); // Update report
+        // Also update inline report leave list
+        if (document.getElementById('reportLeavesTable')) {
+          renderReportLeaves();
+        }
       });
     });
     
@@ -334,6 +457,7 @@
         renderEmployees();
         renderLeaves();
         buildReportCard();
+        renderReportLeaves();
       });
     });
     updateYearTabsNav();
@@ -912,11 +1036,11 @@
       updateYearTabs();
       const r = $('#reportYear'); if(r) r.value = state.year;
       const eey = $('#empEntYear'); if(eey) eey.value = state.year;
-      renderEmployees(); renderLeaves(); buildReportCard();
+      renderEmployees(); renderLeaves(); buildReportCard(); renderReportLeaves();
     });
-    const r = $('#reportYear'); if(r){ r.value = state.year; r.addEventListener('change', ()=> buildReportCard()); }
-    const re = $('#reportEmployee'); if(re){ re.addEventListener('change', ()=> buildReportCard()); }
-    const rr = $('#refreshReport'); if(rr){ rr.addEventListener('click', ()=> buildReportCard()); }
+    const r = $('#reportYear'); if(r){ r.value = state.year; r.addEventListener('change', ()=> { buildReportCard(); renderReportLeaves(); }); }
+    const re = $('#reportEmployee'); if(re){ re.addEventListener('change', ()=> { buildReportCard(); renderReportLeaves(); }); }
+    const rr = $('#refreshReport'); if(rr){ rr.addEventListener('click', ()=> { buildReportCard(); renderReportLeaves(); }); }
     
     // Year tabs
     $$('.year-tab').forEach(tab=>{
@@ -926,7 +1050,7 @@
         updateYearTabs();
         const r = $('#reportYear'); if(r) r.value = state.year;
         const eey = $('#empEntYear'); if(eey) eey.value = state.year;
-        renderEmployees(); renderLeaves(); buildReportCard();
+        renderEmployees(); renderLeaves(); buildReportCard(); renderReportLeaves();
       });
     });
     updateYearTabs();
@@ -1222,6 +1346,7 @@
     renderEmployees();
     renderLeaves();
     buildReportCard();
+    renderReportLeaves();
     try{
       updateCalendarEmployeeFilter();
       renderCalendar();
@@ -1241,6 +1366,7 @@
     bindPrint();
     bindUser();
     bindHolidays();
+    bindReportLeaves();
     bindMaintenanceButtons();
     bindAuditTrail();
     try{
