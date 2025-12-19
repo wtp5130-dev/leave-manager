@@ -13,13 +13,14 @@ export default async function handler(req, res) {
     const { dates } = req.body || {};
     if (!Array.isArray(dates)) return res.status(400).json({ ok: false, error: 'dates array required' });
 
-    // Use transaction
-    await sql.begin(async (tx) => {
-      await tx`DELETE FROM holidays`;
-      for (const d of dates) {
-        await tx`INSERT INTO holidays (date) VALUES (${d}) ON CONFLICT (date) DO NOTHING`;
+    // Clear then insert (avoid sql.begin since some environments don't support it)
+    await sql`DELETE FROM holidays`;
+    for (const d of dates) {
+      // Basic ISO date validation guard
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        await sql`INSERT INTO holidays (date) VALUES (${d}) ON CONFLICT (date) DO NOTHING`;
       }
-    });
+    }
     await touchChange();
     await broadcastChange({ scope: 'holidays' });
     res.status(200).json({ ok: true });
