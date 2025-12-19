@@ -840,50 +840,60 @@
   }
 
   function updateCalendarEmployeeFilter() {
-    const select = $('#calEmployeeFilter');
-    if (!select) return;
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">All Employees</option>';
-    DB.employees?.forEach(e => {
-      select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
-    });
-    select.value = currentVal;
+    try {
+      const select = $('#calEmployeeFilter');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">All Employees</option>';
+      if (Array.isArray(DB.employees)) {
+        DB.employees.forEach(e => {
+          select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+        });
+      }
+      select.value = currentVal;
+    } catch (e) {
+      console.warn('updateCalendarEmployeeFilter error:', e);
+    }
   }
 
   function bindCalendar() {
-    if (!$('#calendarContainer')) return; // Calendar section doesn't exist
-    
-    updateCalendarEmployeeFilter();
-    renderCalendar();
-    
-    const prevBtn = $('#calPrevMonth');
-    const nextBtn = $('#calNextMonth');
-    const filterSelect = $('#calEmployeeFilter');
-    
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        calendarState.month--;
-        if (calendarState.month < 0) {
-          calendarState.month = 11;
-          calendarState.year--;
-        }
-        renderCalendar();
-      });
-    }
-    
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        calendarState.month++;
-        if (calendarState.month > 11) {
-          calendarState.month = 0;
-          calendarState.year++;
-        }
-        renderCalendar();
-      });
-    }
-    
-    if (filterSelect) {
-      filterSelect.addEventListener('change', renderCalendar);
+    try {
+      if (!$('#calendarContainer')) return; // Calendar section doesn't exist
+      
+      updateCalendarEmployeeFilter();
+      renderCalendar();
+      
+      const prevBtn = $('#calPrevMonth');
+      const nextBtn = $('#calNextMonth');
+      const filterSelect = $('#calEmployeeFilter');
+      
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          calendarState.month--;
+          if (calendarState.month < 0) {
+            calendarState.month = 11;
+            calendarState.year--;
+          }
+          renderCalendar();
+        });
+      }
+      
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          calendarState.month++;
+          if (calendarState.month > 11) {
+            calendarState.month = 0;
+            calendarState.year++;
+          }
+          renderCalendar();
+        });
+      }
+      
+      if (filterSelect) {
+        filterSelect.addEventListener('change', renderCalendar);
+      }
+    } catch (e) {
+      console.warn('bindCalendar error:', e);
     }
   }
 
@@ -1207,8 +1217,12 @@
     renderEmployees();
     renderLeaves();
     buildReportCard();
-    updateCalendarEmployeeFilter();
-    renderCalendar();
+    try{
+      updateCalendarEmployeeFilter();
+      renderCalendar();
+    }catch(e){
+      console.warn('Calendar render failed (non-critical):', e);
+    }
   }
 
   async function init(){
@@ -1224,7 +1238,11 @@
     bindHolidays();
     bindMaintenanceButtons();
     bindAuditTrail();
-    bindCalendar();
+    try{
+      bindCalendar();
+    }catch(e){
+      console.warn('Calendar binding failed (non-critical):', e);
+    }
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
     
