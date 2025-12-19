@@ -265,7 +265,17 @@
       if(!key || !cluster) return;
       const p = new window.Pusher(key, { cluster, authTransport: 'ajax' });
       const channel = p.subscribe('leave-manager');
-      channel.bind('changed', async () => { await refreshFromServer(); });
+      channel.bind('changed', async () => {
+        const prev = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING').length;
+        await refreshFromServer();
+        updateInbox();
+        const next = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING').length;
+        const user = getCurrentUser();
+        if(user && (user.role==='MANAGER' || user.role==='HR') && next > prev){
+          const panel = document.getElementById('inboxDropdown');
+          if(panel){ panel.style.display='block'; }
+        }
+      });
     }catch(e){ /* ignore */ }
   }
   function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
@@ -1251,6 +1261,15 @@
         const tabSection = document.getElementById('tab-settings');
         if(tabBtn) tabBtn.style.display = 'none';
         if(tabSection) tabSection.style.display = 'none';
+        // Hide Employees tab/button and section
+        const empTabBtn = document.querySelector('.tab[data-tab="employees"]');
+        const empSection = document.getElementById('tab-employees');
+        if(empTabBtn) empTabBtn.style.display = 'none';
+        if(empSection) empSection.style.display = 'none';
+        // Hide Employees quick link in header
+        const gotoEmp = document.getElementById('gotoEmployeesBtn'); if(gotoEmp) gotoEmp.style.display='none';
+        // Hide employee tabs nav bar
+        const empTabsNav = document.getElementById('employeeTabsNav'); if(empTabsNav) empTabsNav.style.display='none';
       }
       
       // Setup logout button
