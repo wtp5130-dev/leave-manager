@@ -146,6 +146,7 @@ textarea{resize:vertical}
   border: 1px solid #334155;
   background: #0f172a;
   font-size: 0.85rem;
+  table-layout: fixed; /* ensure perfect column alignment */
 }
 
 .calendar thead {
@@ -160,6 +161,7 @@ textarea{resize:vertical}
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  width: 14.2857%;
 }
 
 .calendar td {
@@ -169,6 +171,7 @@ textarea{resize:vertical}
   vertical-align: top;
   background: #0b1220;
   position: relative;
+  width: 14.2857%;
 }
 
 .calendar td.other-month {
@@ -182,7 +185,9 @@ textarea{resize:vertical}
 }
 
 .cal-day-number {
-  padding: 4px 8px;
+  position: absolute;
+  top: 6px;
+  right: 8px;
   font-weight: 600;
   color: #94a3b8;
   font-size: 0.9rem;
@@ -193,9 +198,12 @@ textarea{resize:vertical}
 }
 
 .cal-leaves {
-  padding: 4px 8px;
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 28px; /* below day number */
+  bottom: 6px;
   overflow-y: auto;
-  max-height: 95px;
 }
 
 .cal-leave-item {
