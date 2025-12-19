@@ -265,8 +265,17 @@ textarea{resize:vertical}
 
 /* Make date picker icon visible on dark theme */
 input[type="date"]{ color-scheme: dark; padding-right: 30px; }
-input[type="date"]::-webkit-calendar-picker-indicator{ filter: invert(1); opacity:1; cursor:pointer; }
+/* Custom calendar icon for WebKit (Chrome/Edge/Safari) */
+input[type="date"]::-webkit-calendar-picker-indicator{
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%23cbd5e1'><path d='M7 2a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3h-1V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1zm12 7H5v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9z'/></svg>") no-repeat center center;
+  opacity: 1;
+  cursor: pointer;
+  color: transparent;
+}
 input[type="date"]::-ms-clear{ display:none; }
+
+/* Make Reason field same height as other inputs */
+#reportLeaveReason{ height: 36px; min-height: 36px; }
 
 .print-only{display:none}
 @media print{
