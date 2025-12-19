@@ -17,13 +17,9 @@ export default async function handler(req, res) {
     
     // Get current user
     const { requireAuth } = await import('./auth-helpers.js');
-    const user = requireAuth(req, res);
+    // Only MANAGER / HR can delete leave records
+    const user = requireAuth(req, res, ['MANAGER','HR']);
     if(!user) return;
-    
-    // Check authorization - only employee who created it or managers can delete
-    if (leave && leave.created_by !== user.id && !['MANAGER','HR'].includes(user.role)) {
-      return res.status(403).json({ ok: false, error: 'forbidden' });
-    }
     
     await sql`DELETE FROM leaves WHERE id=${id}`;
     

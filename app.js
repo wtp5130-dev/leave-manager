@@ -97,13 +97,15 @@
     if(!tbody) return;
     const empId = state.selectedEmployee || (DB.employees[0]?.id||'');
     const year = state.year;
+    const user = getCurrentUser();
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
       .filter(l => workingDaysInYear(l.from,l.to,year) > 0)
       .sort((a,b)=> (a.from||'').localeCompare(b.from||''))
       .map(l=>{
         const tr = document.createElement('tr');
-        tr.innerHTML = `
+        const actionsAllowed = (user?.role==='MANAGER' || user?.role==='HR');
+        tr.innerHTML = actionsAllowed ? `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
           <td>${l.applied||''}</td>
@@ -116,7 +118,15 @@
             <button class="danger" data-act="report-del" data-id="${l.id}">Delete</button>
             <button class="ghost" data-act="report-approve" data-id="${l.id}">Approve</button>
             <button class="ghost" data-act="report-reject" data-id="${l.id}">Reject</button>
-          </td>`;
+          </td>` : `
+          <td>${l.type}</td>
+          <td>${l.status||'PENDING'}</td>
+          <td>${l.applied||''}</td>
+          <td>${l.from||''}</td>
+          <td>${l.to||''}</td>
+          <td>${l.days ?? workingDays(l.from,l.to)}</td>
+          <td>${l.reason||''}</td>
+          <td></td>`;
         return tr;
       });
     tbody.innerHTML = '';
@@ -169,7 +179,7 @@
         const btn = e.target.closest('button'); if(!btn) return;
         const id = btn.dataset.id; const act = btn.dataset.act;
         if(act==='report-edit'){
-          const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+          const l = DB.leaves.find(x=>x.id===id); if(!l) return; const user = getCurrentUser(); if(user?.role==='EMPLOYEE') return;
           document.getElementById('reportLeaveId').value = l.id;
           document.getElementById('reportLeaveType').value = l.type;
           document.getElementById('reportLeaveApplied').value = l.applied||'';
@@ -179,7 +189,7 @@
           document.getElementById('reportLeaveReason').value = l.reason||'';
         }
         if(act==='report-del'){
-          if(confirm('Delete this leave entry?')){
+          const user = getCurrentUser(); if(user?.role==='EMPLOYEE') return; if(confirm('Delete this leave entry?')){
             DB.leaves = DB.leaves.filter(x=>x.id!==id); saveDB(DB);
             await apiDeleteLeave(id);
             await refreshFromServer();

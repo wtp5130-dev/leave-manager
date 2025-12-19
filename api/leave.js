@@ -26,6 +26,10 @@ export default async function handler(req, res) {
     let oldLeave = null;
     let isNew = true;
     if (l.id) {
+      // Employees cannot edit existing leave entries
+      if(user.role==='EMPLOYEE'){
+        return res.status(403).json({ ok:false, error:'forbidden' });
+      }
       try {
         const { rows } = await sql`SELECT * FROM leaves WHERE id=${l.id}`;
         const owner = rows?.[0]?.created_by;
