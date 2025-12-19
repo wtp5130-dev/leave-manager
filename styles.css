@@ -124,8 +124,117 @@ textarea{resize:vertical}
 .card table thead tr th:nth-child(5){ width:12%; }
 .card table thead tr th:nth-child(6){ width:37%; }
 
-.print-only{display:none}
-@media print{
+/* Calendar Styles */
+#calendarContainer {
+  overflow-x: auto;
+}
+
+.calendar {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #334155;
+  background: #0f172a;
+  font-size: 0.85rem;
+}
+
+.calendar thead {
+  background: #1e293b;
+  border-bottom: 2px solid #334155;
+}
+
+.calendar th {
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar td {
+  padding: 0;
+  border: 1px solid #334155;
+  height: 120px;
+  vertical-align: top;
+  background: #0b1220;
+  position: relative;
+}
+
+.calendar td.other-month {
+  background: #050a10;
+  opacity: 0.5;
+}
+
+.calendar td.today {
+  background: #1e3a5f;
+  border: 2px solid #4f46e5;
+}
+
+.cal-day-number {
+  padding: 4px 8px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.cal-day-number.other-month {
+  color: #475569;
+}
+
+.cal-leaves {
+  padding: 4px 8px;
+  overflow-y: auto;
+  max-height: 95px;
+}
+
+.cal-leave-item {
+  padding: 3px 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid;
+}
+
+.cal-leave-item.ANNUAL {
+  background: #1e3a5f;
+  border-left-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.cal-leave-item.SICK {
+  background: #3f2f1e;
+  border-left-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.cal-leave-item.UNPAID {
+  background: #2f3f2f;
+  border-left-color: #6b7280;
+  color: #d1d5db;
+}
+
+.cal-leave-item.EMERGENCY {
+  background: #3f1f2f;
+  border-left-color: #ef4444;
+  color: #fca5a5;
+}
+
+.cal-leave-item.PENDING {
+  opacity: 0.6;
+}
+
+.cal-leave-item.APPROVED {
+  opacity: 1;
+}
+
+.cal-leave-item.REJECTED {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
   body{background:white}
   .app-header,.tabs,.app-footer,.controls,.panel-head,.header-actions{display:none !important}
   .panel{border:0;padding:0}

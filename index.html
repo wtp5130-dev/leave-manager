@@ -56,6 +56,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="employees" role="tab">Employees</button>
     <button class="tab" data-tab="leaves" role="tab">Leaves</button>
+    <button class="tab" data-tab="calendar" role="tab">Calendar</button>
     <button class="tab" data-tab="reports" role="tab">Report</button>
     <button class="tab" data-tab="settings" role="tab">Settings</button>
   </nav>
@@ -212,6 +213,26 @@
         </div>
         <div id="cardContainer" class="card-container">
           <!-- Generated content will render here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Calendar -->
+    <section id="tab-calendar" class="tab-content" aria-labelledby="Calendar">
+      <div class="panel">
+        <h2>Leave Calendar</h2>
+        <div class="controls">
+          <button id="calPrevMonth" class="ghost">← Previous</button>
+          <span id="calCurrentMonth" style="font-weight: bold; min-width: 150px; text-align: center;">December 2025</span>
+          <button id="calNextMonth" class="ghost">Next →</button>
+          <label style="margin-left: 2rem;">Filter Employee
+            <select id="calEmployeeFilter">
+              <option value="">All Employees</option>
+            </select>
+          </label>
+        </div>
+        <div id="calendarContainer" style="margin-top: 1rem;">
+          <!-- Calendar will be rendered here -->
         </div>
       </div>
     </section>

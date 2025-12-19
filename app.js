@@ -746,6 +746,131 @@
     });
   }
 
+  // Calendar
+  let calendarState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+  function renderCalendar() {
+    const year = calendarState.year;
+    const month = calendarState.month;
+    const today = new Date();
+    const isToday = (d) => d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Update header
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    $('#calCurrentMonth').textContent = `${monthNames[month]} ${year}`;
+    
+    // Filter by selected employee
+    const selectedEmpId = $('#calEmployeeFilter')?.value;
+    let filteredLeaves = DB.leaves || [];
+    if (selectedEmpId) {
+      filteredLeaves = filteredLeaves.filter(l => l.employeeId === selectedEmpId);
+    }
+    
+    // Build calendar table
+    let html = '<table class="calendar"><thead><tr>';
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(d => html += `<th>${d}</th>`);
+    html += '</tr></thead><tbody><tr>';
+    
+    // Empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      html += '<td class="other-month"></td>';
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cellDate = new Date(year, month, day);
+      const dateStr = cellDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const isTodayCell = isToday(cellDate);
+      
+      // Get leaves for this day
+      const leavesOnDay = filteredLeaves.filter(l => {
+        if (!l.from || !l.to) return false;
+        if (l.status !== 'APPROVED' && l.status !== undefined) return false; // Only show approved
+        return dateStr >= l.from && dateStr <= l.to;
+      });
+      
+      // Group leaves by employee
+      const leavesByEmp = {};
+      leavesOnDay.forEach(l => {
+        if (!leavesByEmp[l.employeeId]) leavesByEmp[l.employeeId] = [];
+        leavesByEmp[l.employeeId].push(l);
+      });
+      
+      const dayClass = isTodayCell ? 'today' : '';
+      html += `<td class="${dayClass}">
+        <div class="cal-day-number">${day}</div>
+        <div class="cal-leaves">`;
+      
+      Object.entries(leavesByEmp).forEach(([empId, leaves]) => {
+        const emp = DB.employees.find(e => e.id === empId);
+        leaves.forEach(l => {
+          const status = l.status || 'PENDING';
+          html += `<div class="cal-leave-item ${l.type} ${status}" title="${emp?.name} - ${l.type} (${status})">${emp?.name}</div>`;
+        });
+      });
+      
+      html += '</div></td>';
+      
+      // New row every 7 days
+      if ((day + startingDayOfWeek) % 7 === 0 && day < daysInMonth) {
+        html += '</tr><tr>';
+      }
+    }
+    
+    // Fill remaining cells
+    const totalCells = startingDayOfWeek + daysInMonth;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+      html += '<td class="other-month"></td>';
+    }
+    
+    html += '</tr></tbody></table>';
+    $('#calendarContainer').innerHTML = html;
+  }
+
+  function updateCalendarEmployeeFilter() {
+    const select = $('#calEmployeeFilter');
+    if (!select) return;
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">All Employees</option>';
+    DB.employees?.forEach(e => {
+      select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+    });
+    select.value = currentVal;
+  }
+
+  function bindCalendar() {
+    updateCalendarEmployeeFilter();
+    renderCalendar();
+    
+    $('#calPrevMonth')?.addEventListener('click', () => {
+      calendarState.month--;
+      if (calendarState.month < 0) {
+        calendarState.month = 11;
+        calendarState.year--;
+      }
+      renderCalendar();
+    });
+    
+    $('#calNextMonth')?.addEventListener('click', () => {
+      calendarState.month++;
+      if (calendarState.month > 11) {
+        calendarState.month = 0;
+        calendarState.year++;
+      }
+      renderCalendar();
+    });
+    
+    $('#calEmployeeFilter')?.addEventListener('change', renderCalendar);
+  }
+
   // Year controls
   function bindYear(){
     const y = $('#yearInput');
@@ -1066,6 +1191,8 @@
     renderEmployees();
     renderLeaves();
     buildReportCard();
+    updateCalendarEmployeeFilter();
+    renderCalendar();
   }
 
   async function init(){
@@ -1081,6 +1208,7 @@
     bindHolidays();
     bindMaintenanceButtons();
     bindAuditTrail();
+    bindCalendar();
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
     
