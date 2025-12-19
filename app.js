@@ -7,6 +7,18 @@
   const pad = (n) => String(n).padStart(2,'0');
   const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const today = () => ymd(new Date());
+  // Years of service helper (full years from join date to today)
+  function yearsOfService(joinedStr){
+    if(!joinedStr) return '';
+    const start = new Date(joinedStr);
+    if(isNaN(start)) return '';
+    const now = new Date();
+    let years = now.getFullYear() - start.getFullYear();
+    const m = now.getMonth() - start.getMonth();
+    if(m < 0 || (m === 0 && now.getDate() < start.getDate())) years--;
+    if(years < 0) years = 0;
+    return `${years} year${years===1?'':'s'}`;
+  }
 
   // Storage
   const STORE_KEY = 'leaveManagerDB.v2';
@@ -872,6 +884,7 @@
     const hl = totalsByType(empId, year, 'HL');
     const tc = totalsByType(empId, year, 'TC');
 
+    const yos = yearsOfService(emp.dateJoined);
     container.innerHTML = `
     <div class="card">
       <h3>STAFF LEAVE CARD</h3>
@@ -880,6 +893,7 @@
         <label>Year<br><strong>${year}</strong></label>
         <label>Job Title / Grade<br><strong>${emp.jobTitle||''}</strong></label>
         <label>Date Joined<br><strong>${emp.dateJoined||''}</strong></label>
+        <label>Years of Service<br><strong>${yos}</strong></label>
         <label class="grid-span-2">Department<br><strong>${emp.department||''}</strong></label>
       </div>
 
