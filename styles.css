@@ -235,6 +235,8 @@ textarea{resize:vertical}
   text-decoration: line-through;
 }
 
+.print-only{display:none}
+@media print{
   body{background:white}
   .app-header,.tabs,.app-footer,.controls,.panel-head,.header-actions{display:none !important}
   .panel{border:0;padding:0}
