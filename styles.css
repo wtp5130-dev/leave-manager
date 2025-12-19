@@ -21,23 +21,30 @@ body{
 .app-header{
   display:flex;justify-content:space-between;align-items:center;
   padding:12px 16px;border-bottom:1px solid #1f2937;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);
-  position:sticky;top:0;z-index:10
+  position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:12px
 }
-.brand{display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .brand h1{font-size:18px;margin:0}
-.header-actions{display:flex;gap:8px;align-items:center}
+.header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;flex:1}
 .year-picker{display:flex;gap:6px;align-items:center;color:var(--muted)}
 .year-picker input{width:86px}
 .auth-box{display:flex;gap:8px;align-items:center;margin-right:8px}
 .auth-box .user{color:var(--muted);font-size:12px}
 .button, button{
   appearance:none;border:1px solid #334155;background:#0b1220;color:var(--text);
-  padding:8px 12px;border-radius:8px;cursor:pointer;transition:.2s ease;border-color:#334155
+  padding:8px 14px;border-radius:8px;cursor:pointer;transition:.2s ease;border-color:#334155;
+  font-size:14px;font-weight:500;white-space:nowrap
 }
-button.primary{background:var(--primary);border-color:var(--primary-600)}
-button.primary:hover{filter:brightness(1.1)}
-button.ghost,.button.ghost{background:transparent}
+button:hover{background:#1e293b;border-color:#475569}
+button.primary{background:var(--primary);border-color:var(--primary-600);color:white}
+button.primary:hover{background:var(--primary-600);filter:brightness(1.1)}
+button.ghost,.button.ghost{background:transparent;border-color:transparent}
+button.ghost:hover{background:rgba(255,255,255,.05);border-color:#475569}
 button.danger{background:var(--danger);border-color:#b91c1c}
+button.danger:hover{background:#dc2626}
+
+.button-group{display:flex;gap:8px;align-items:center}
+.button-group.secondary button,.button-group.secondary .button{font-size:13px;padding:6px 12px}
 
 .tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937}
 .tab{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 12px;color:var(--muted)}
@@ -46,7 +53,9 @@ button.danger{background:var(--danger);border-color:#b91c1c}
 main{padding:16px;display:grid;gap:16px}
 .panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.controls,.filters{display:flex;gap:10px;flex-wrap:wrap}
+.controls,.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.controls>input,.controls>select{flex:1;min-width:120px}
+.controls>button{flex-shrink:0}
 .search-box input, input, select, textarea{background:#0b1220;border:1px solid #334155;color:var(--text);padding:8px;border-radius:8px}
 textarea{resize:vertical}
 .cloud{display:flex;gap:6px;align-items:center}
@@ -54,7 +63,8 @@ textarea{resize:vertical}
 
 .grid{display:grid;grid-template-columns:repeat(2, minmax(220px,1fr));gap:12px}
 .grid-span-2{grid-column:1/-1}
-.form-actions{display:flex;gap:8px}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.form-actions.grid-span-2{grid-column:span 2}
 
 .table-wrap{overflow:auto;border:1px solid #1f2937;border-radius:8px}
 .table{width:100%;border-collapse:collapse;min-width:820px}

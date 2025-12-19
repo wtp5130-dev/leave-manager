@@ -20,19 +20,19 @@
       <label class="year-picker">Year
         <input id="yearInput" type="number" min="2000" max="2100" step="1" />
       </label>
-      <button id="exportBtn" class="ghost">Export JSON</button>
-      <label class="import">
-        <input id="importInput" type="file" accept="application/json" hidden />
-        <span class="button ghost" id="importBtn">Import JSON</span>
-      </label>
-      <div class="cloud">
-        <input id="cloudDocId" placeholder="cloud doc id" value="default" />
-        <button id="cloudLoadBtn" class="ghost" title="Load from cloud">Load</button>
-        <button id="cloudSaveBtn" class="ghost" title="Save to cloud">Save</button>
-        <small id="cloudStatus" style="color:var(--muted)"></small>
+      <div class="button-group">
+        <button id="printCardBtn" class="primary">Print Card</button>
       </div>
-      <button id="printCardBtn" class="primary">Print Card</button>
-      <button id="logoutBtn" class="ghost">Logout</button>
+      <div class="button-group secondary">
+        <button id="exportBtn" class="ghost" title="Export data as JSON">Export</button>
+        <label class="import" title="Import data from JSON">
+          <input id="importInput" type="file" accept="application/json" hidden />
+          <span class="button ghost" id="importBtn">Import</span>
+        </label>
+      </div>
+      <div class="button-group secondary">
+        <button id="logoutBtn" class="ghost">Logout</button>
+      </div>
     </div>
   </header>
 
