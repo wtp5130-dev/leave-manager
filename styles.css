@@ -262,6 +262,10 @@ textarea{resize:vertical}
   align-items:end;
 }
 #reportLeaveForm .grid-span-2{ grid-column: 1 / -1; }
+#reportLeaveForm label{ display:flex; align-items:center; gap:10px; }
+#reportLeaveForm label > input,
+#reportLeaveForm label > select,
+#reportLeaveForm label > textarea{ flex:1; }
 
 /* Make date picker icon visible on dark theme */
 input[type="date"]{ color-scheme: dark; padding-right: 30px; }
