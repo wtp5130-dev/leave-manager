@@ -56,8 +56,9 @@
   }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
   async function apiSetHolidays(dates){
+    const onlyDates = (dates||[]).map(d => typeof d === 'string' ? d : d?.date).filter(Boolean);
     const r = await fetch('/api/holidays-set', {
-      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates })
+      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates: onlyDates })
     });
     if(!r.ok){
       let msg = 'Holidays set failed';
@@ -247,7 +248,11 @@
 
   // Business days calculation (Mon-Fri excluding holidays)
   function isWeekend(date){ const day = date.getDay(); return day===0 || day===6; }
-  function isHoliday(date, holidays){ const s = ymd(date); return holidays.includes(s); }
+  function isHoliday(date, holidays){
+    const s = ymd(date);
+    if(!Array.isArray(holidays)) return false;
+    return holidays.some(h => (typeof h === 'string' ? h : h?.date) === s);
+  }
   function workingDays(fromStr, toStr, holidays=DB.holidays){
     if(!fromStr || !toStr) return 0;
     let from = new Date(fromStr), to = new Date(toStr);
@@ -1261,14 +1266,16 @@
   function renderHolidays(){
     $('#holYear').value = state.year;
     const tbody = $('#holidaysTable tbody');
-    const items = (DB.holidays||[]).map(d=>({ date:d, name:'' }));
+    const items = (DB.holidays||[]).map(h => (typeof h === 'string' ? { date: h, name: '' } : { date: h.date, name: h.name||'' }));
+    items.sort((a,b)=> (a.date||'').localeCompare(b.date||''));
     tbody.innerHTML = items.map(h=>`<tr><td>${h.date}</td><td>${h.name||''}</td><td><button class="danger" data-date="${h.date}" data-act="del-hol">Remove</button></td></tr>`).join('') || '<tr><td colspan="3">No holidays configured.</td></tr>';
   }
   function bindHolidays(){
     $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; $('#yearInput').value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
     $('#holAddBtn').addEventListener('click', ()=>{
       const d = $('#holAddDate').value; if(!d) return;
-      if(!DB.holidays.includes(d)) DB.holidays.push(d);
+      const exists = (DB.holidays||[]).some(x => (typeof x==='string'? x : x.date) === d);
+      if(!exists) DB.holidays.push({ date:d, name:'' });
       saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
     const holClear = document.getElementById('holClearBtn');
@@ -1293,31 +1300,31 @@
     if (my2026Btn) {
       my2026Btn.addEventListener('click', async ()=>{
         const dates = [
-          '2026-01-01', // New Year's Day (Selangor included)
-          '2026-02-01', // Thaipusam (Selangor)
-          '2026-02-02', // Thaipusam Holiday (Selangor)
-          '2026-02-17', // Chinese New Year
-          '2026-02-18', // Chinese New Year Holiday
-          '2026-03-07', // Nuzul Al-Quran (Selangor included)
-          '2026-03-21', // Hari Raya Aidilfitri
-          '2026-03-22', // Hari Raya Aidilfitri Holiday
-          '2026-03-23', // Hari Raya Aidilfitri Holiday (National except Kedah)
-          '2026-05-01', // Labour Day
-          '2026-05-27', // Hari Raya Haji
-          '2026-05-31', // Wesak Day (National)
-          '2026-06-01', // Agong's Birthday & Wesak Holiday (dedup by Set)
-          '2026-06-17', // Awal Muharram
-          '2026-08-25', // Prophet Muhammad's Birthday
-          '2026-08-31', // Merdeka Day
-          '2026-09-16', // Malaysia Day
-          '2026-11-08', // Deepavali (not Sarawak)
-          '2026-11-09', // Deepavali Holiday (National except Kedah, Kelantan, Sarawak & Terengganu)
-          '2026-12-11', // Sultan of Selangor's Birthday
-          '2026-12-25'  // Christmas Day
+          { date:'2026-01-01', name:"New Year's Day" },
+          { date:'2026-02-01', name:'Thaipusam' },
+          { date:'2026-02-02', name:'Thaipusam Holiday' },
+          { date:'2026-02-17', name:'Chinese New Year' },
+          { date:'2026-02-18', name:'Chinese New Year Holiday' },
+          { date:'2026-03-07', name:'Nuzul Al-Quran' },
+          { date:'2026-03-21', name:'Hari Raya Aidilfitri' },
+          { date:'2026-03-22', name:'Hari Raya Aidilfitri Holiday' },
+          { date:'2026-03-23', name:'Hari Raya Aidilfitri Holiday' },
+          { date:'2026-05-01', name:'Labour Day' },
+          { date:'2026-05-27', name:'Hari Raya Haji' },
+          { date:'2026-05-31', name:'Wesak Day' },
+          { date:'2026-06-01', name:"Agong's Birthday" },
+          { date:'2026-06-17', name:'Awal Muharram' },
+          { date:'2026-08-25', name:"Prophet Muhammad's Birthday" },
+          { date:'2026-08-31', name:'Merdeka Day' },
+          { date:'2026-09-16', name:'Malaysia Day' },
+          { date:'2026-11-08', name:'Deepavali' },
+          { date:'2026-11-09', name:'Deepavali Holiday' },
+          { date:'2026-12-11', name:"Sultan of Selangor's Birthday" },
+          { date:'2026-12-25', name:'Christmas Day' }
         ];
-        const set = new Set(DB.holidays||[]);
-        dates.forEach(d=> set.add(d));
-        DB.holidays = Array.from(set).sort();
+        const map = new Map((DB.holidays||[]).map(h=>[typeof h==='string'? h : h.date, (typeof h==='string'? {date:h,name:''}:h)]));
+        dates.forEach(h=> map.set(h.date, h));
+        DB.holidays = Array.from(map.values()).sort((a,b)=> a.date.localeCompare(b.date));
         saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2026 public holidays (National + Selangor).'); }
         catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
@@ -1333,29 +1340,30 @@
     if (my2025Btn) {
       my2025Btn.addEventListener('click', async ()=>{
         const dates = [
-          '2025-01-01', // New Year's Day
-          '2025-01-29', // Chinese New Year
-          '2025-01-30', // Chinese New Year Holiday
-          '2025-02-11', // Thaipusam (Selangor)
-          '2025-03-18', // Nuzul Al-Quran (Selangor included)
-          '2025-03-31', // Hari Raya Aidilfitri
-          '2025-04-01', // Hari Raya Aidilfitri Holiday
-          '2025-05-01', // Labour Day
-          '2025-05-12', // Wesak Day
-          '2025-06-02', // Agong's Birthday
-          '2025-06-07', // Hari Raya Haji
-          '2025-06-27', // Awal Muharram
-          '2025-08-31', // Merdeka Day
-          '2025-09-01', // Merdeka Day Holiday (Selangor included)
-          '2025-09-05', // Prophet Muhammad's Birthday
-          '2025-09-15', // Malaysia Day Holiday (Nat)
-          '2025-09-16', // Malaysia Day
-          '2025-10-20', // Deepavali
-          '2025-12-11', // Sultan of Selangor's Birthday
-          '2025-12-25'  // Christmas Day
+          { date:'2025-01-01', name:"New Year's Day" },
+          { date:'2025-01-29', name:'Chinese New Year' },
+          { date:'2025-01-30', name:'Chinese New Year Holiday' },
+          { date:'2025-02-11', name:'Thaipusam' },
+          { date:'2025-03-18', name:'Nuzul Al-Quran' },
+          { date:'2025-03-31', name:'Hari Raya Aidilfitri' },
+          { date:'2025-04-01', name:'Hari Raya Aidilfitri Holiday' },
+          { date:'2025-05-01', name:'Labour Day' },
+          { date:'2025-05-12', name:'Wesak Day' },
+          { date:'2025-06-02', name:"Agong's Birthday" },
+          { date:'2025-06-07', name:'Hari Raya Haji' },
+          { date:'2025-06-27', name:'Awal Muharram' },
+          { date:'2025-08-31', name:'Merdeka Day' },
+          { date:'2025-09-01', name:'Merdeka Day Holiday' },
+          { date:'2025-09-05', name:"Prophet Muhammad's Birthday" },
+          { date:'2025-09-15', name:'Malaysia Day Holiday' },
+          { date:'2025-09-16', name:'Malaysia Day' },
+          { date:'2025-10-20', name:'Deepavali' },
+          { date:'2025-12-11', name:"Sultan of Selangor's Birthday" },
+          { date:'2025-12-25', name:'Christmas Day' }
         ];
-        const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
-        DB.holidays = Array.from(set).sort(); saveDB(DB);
+        const map = new Map((DB.holidays||[]).map(h=>[typeof h==='string'? h : h.date, (typeof h==='string'? {date:h,name:''}:h)]));
+        dates.forEach(h=> map.set(h.date, h));
+        DB.holidays = Array.from(map.values()).sort((a,b)=> a.date.localeCompare(b.date)); saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2025 public holidays (National + Selangor).'); }
         catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
         state.year = 2025; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2025'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2025';
@@ -1368,29 +1376,30 @@
     if (my2027Btn) {
       my2027Btn.addEventListener('click', async ()=>{
         const dates = [
-          '2027-01-01', // New Year's Day
-          '2027-01-22', // Thaipusam (Selangor)
-          '2027-02-06', // Chinese New Year
-          '2027-02-07', // Chinese New Year Holiday
-          '2027-02-08', // Chinese New Year Holiday (Nat except Kedah)
-          '2027-02-24', // Nuzul Al-Quran (Selangor included)
-          '2027-03-10', // Hari Raya Aidilfitri
-          '2027-03-11', // Hari Raya Aidilfitri Holiday
-          '2027-05-01', // Labour Day
-          '2027-05-17', // Hari Raya Haji
-          '2027-05-20', // Wesak Day
-          '2027-06-06', // Awal Muharram
-          '2027-06-07', // Agong's Birthday
-          '2027-08-15', // Prophet Muhammad's Birthday
-          '2027-08-16', // Prophet Muhammad's Birthday Holiday (Nat except KK&T)
-          '2027-08-31', // Merdeka Day
-          '2027-09-16', // Malaysia Day
-          '2027-10-28', // Deepavali
-          '2027-12-11', // Sultan of Selangor's Birthday
-          '2027-12-25'  // Christmas Day
+          { date:'2027-01-01', name:"New Year's Day" },
+          { date:'2027-01-22', name:'Thaipusam' },
+          { date:'2027-02-06', name:'Chinese New Year' },
+          { date:'2027-02-07', name:'Chinese New Year Holiday' },
+          { date:'2027-02-08', name:'Chinese New Year Holiday' },
+          { date:'2027-02-24', name:'Nuzul Al-Quran' },
+          { date:'2027-03-10', name:'Hari Raya Aidilfitri' },
+          { date:'2027-03-11', name:'Hari Raya Aidilfitri Holiday' },
+          { date:'2027-05-01', name:'Labour Day' },
+          { date:'2027-05-17', name:'Hari Raya Haji' },
+          { date:'2027-05-20', name:'Wesak Day' },
+          { date:'2027-06-06', name:'Awal Muharram' },
+          { date:'2027-06-07', name:"Agong's Birthday" },
+          { date:'2027-08-15', name:"Prophet Muhammad's Birthday" },
+          { date:'2027-08-16', name:"Prophet Muhammad's Birthday Holiday" },
+          { date:'2027-08-31', name:'Merdeka Day' },
+          { date:'2027-09-16', name:'Malaysia Day' },
+          { date:'2027-10-28', name:'Deepavali' },
+          { date:'2027-12-11', name:"Sultan of Selangor's Birthday" },
+          { date:'2027-12-25', name:'Christmas Day' }
         ];
-        const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
-        DB.holidays = Array.from(set).sort(); saveDB(DB);
+        const map = new Map((DB.holidays||[]).map(h=>[typeof h==='string'? h : h.date, (typeof h==='string'? {date:h,name:''}:h)]));
+        dates.forEach(h=> map.set(h.date, h));
+        DB.holidays = Array.from(map.values()).sort((a,b)=> a.date.localeCompare(b.date)); saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2027 public holidays (National + Selangor).'); }
         catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
         state.year = 2027; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2027'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2027';
@@ -1464,11 +1473,11 @@
         const list = JSON.parse(text);
         if(!Array.isArray(list)) throw new Error('Invalid API response format');
         console.log(`Fetched ${list.length} holidays`);
-        
-        const dates = list.map(x=>x.date); // ISO YYYY-MM-DD
-        const set = new Set(DB.holidays||[]);
-        dates.forEach(d=>set.add(d));
-        DB.holidays = Array.from(set).sort();
+        // Merge as objects with names
+        const incoming = list.map(x=>({ date:x.date, name:x.localName || x.name || '' }));
+        const map = new Map((DB.holidays||[]).map(h=>[typeof h==='string'? h : h.date, (typeof h==='string'? {date:h,name:''}:h)]));
+        incoming.forEach(h=> map.set(h.date, h));
+        DB.holidays = Array.from(map.values()).sort((a,b)=> a.date.localeCompare(b.date));
         saveDB(DB); 
         await apiSetHolidays(DB.holidays); 
         await refreshFromServer();
@@ -1481,7 +1490,9 @@
     $('#holidaysTable').addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
       if(btn.dataset.act==='del-hol'){
-        const d = btn.dataset.date; DB.holidays = (DB.holidays||[]).filter(x=>x!==d); saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
+        const d = btn.dataset.date;
+        DB.holidays = (DB.holidays||[]).filter(x=> (typeof x==='string'? x : x.date) !== d);
+        saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
       }
     });
   }
