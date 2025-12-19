@@ -144,6 +144,7 @@
           await refreshFromServer();
           form.reset(); if(idEl) idEl.value='';
           buildReportCard(); renderReportLeaves();
+          activateTab('reports');
           alert('Leave submitted.');
         }catch(err){ console.error('Report leave submit error:', err); alert('Error: ' + (err?.message||'Unknown')); }
       });
@@ -172,6 +173,7 @@
             await apiDeleteLeave(id);
             await refreshFromServer();
             buildReportCard(); renderReportLeaves();
+            activateTab('reports');
           }
         }
         if(act==='report-approve' || act==='report-reject'){
@@ -183,6 +185,7 @@
             l.approvedAt = today();
             saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
             buildReportCard(); renderReportLeaves();
+            activateTab('reports');
           }catch(err){ console.error('Approve/Reject error:', err); alert('Error: ' + (err?.message||'Unknown')); }
         }
       });
@@ -434,6 +437,18 @@
         $(`#tab-${t}`).classList.add('active');
       })
     })
+  }
+
+  // Helper: force a specific top-level tab to remain active
+  function activateTab(name){
+    try{
+      $$('.tab').forEach(b=>b.classList.remove('active'));
+      const btn = document.querySelector(`.tab[data-tab="${name}"]`);
+      if(btn) btn.classList.add('active');
+      $$('.tab-content').forEach(s=>s.classList.remove('active'));
+      const sec = document.getElementById(`tab-${name}`);
+      if(sec) sec.classList.add('active');
+    }catch{}
   }
 
   // Year tabs
