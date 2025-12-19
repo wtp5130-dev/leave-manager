@@ -171,6 +171,11 @@
           entry.to = document.getElementById('reportLeaveTo').value;
           entry.days = Number(document.getElementById('reportLeaveDays').value) || workingDays(entry.from, entry.to);
           entry.reason = (document.getElementById('reportLeaveReason').value||'').trim();
+          if(!entry.reason){
+            alert('Please enter a reason for the leave.');
+            document.getElementById('reportLeaveReason').focus();
+            return;
+          }
           if(isNew) DB.leaves.push(entry);
           saveDB(DB);
           // Optimistic UI update – show immediately

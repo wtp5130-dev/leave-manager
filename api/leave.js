@@ -45,6 +45,7 @@ export default async function handler(req, res) {
       }
     }
     if (!l.id || !l.employeeId || !l.type) return res.status(400).json({ ok: false, error: 'id, employeeId, type required' });
+    if (!l.reason || !String(l.reason).trim()) return res.status(400).json({ ok: false, error: 'reason required' });
     
     console.log('leave.js: inserting/updating leave:', l.id, 'emp:', l.employeeId, 'type:', l.type);
     await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, created_by, updated_at)
