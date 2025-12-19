@@ -1261,6 +1261,45 @@
       if(!DB.holidays.includes(d)) DB.holidays.push(d);
       saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
+    // Quick-load: Malaysia 2026 National + Selangor
+    const my2026Btn = document.getElementById('loadMY2026');
+    if (my2026Btn) {
+      my2026Btn.addEventListener('click', async ()=>{
+        const dates = [
+          '2026-01-01', // New Year's Day (Selangor included)
+          '2026-02-01', // Thaipusam (Selangor)
+          '2026-02-02', // Thaipusam Holiday (Selangor)
+          '2026-02-17', // Chinese New Year
+          '2026-02-18', // Chinese New Year Holiday
+          '2026-03-07', // Nuzul Al-Quran (Selangor included)
+          '2026-03-21', // Hari Raya Aidilfitri
+          '2026-03-22', // Hari Raya Aidilfitri Holiday
+          '2026-03-23', // Hari Raya Aidilfitri Holiday (National except Kedah)
+          '2026-05-01', // Labour Day
+          '2026-05-27', // Hari Raya Haji
+          '2026-05-31', // Wesak Day (National)
+          '2026-06-01', // Agong's Birthday & Wesak Holiday (dedup by Set)
+          '2026-06-17', // Awal Muharram
+          '2026-08-25', // Prophet Muhammad's Birthday
+          '2026-08-31', // Merdeka Day
+          '2026-09-16', // Malaysia Day
+          '2026-11-08', // Deepavali (not Sarawak)
+          '2026-11-09', // Deepavali Holiday (National except Kedah, Kelantan, Sarawak & Terengganu)
+          '2026-12-11', // Sultan of Selangor's Birthday
+          '2026-12-25'  // Christmas Day
+        ];
+        const set = new Set(DB.holidays||[]);
+        dates.forEach(d=> set.add(d));
+        DB.holidays = Array.from(set).sort();
+        saveDB(DB);
+        try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2026 public holidays (National + Selangor).'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        // Switch context to 2026 for easy viewing
+        state.year = 2026; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2026';
+        const ny = document.getElementById('yearInput'); if(ny) ny.value = '2026';
+        renderHolidays(); buildReportCard();
+      });
+    }
     $('#showCountriesBtn').addEventListener('click', async ()=>{
       const container = $('#countriesListContainer');
       const list = $('#countriesList');
