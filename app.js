@@ -161,6 +161,8 @@
           entry.reason = (document.getElementById('reportLeaveReason').value||'').trim();
           if(isNew) DB.leaves.push(entry);
           saveDB(DB);
+          // Optimistic UI update – show immediately
+          renderReportLeaves(); buildReportCard();
           await apiSaveLeave(entry);
           await refreshFromServer();
           form.reset(); if(idEl) idEl.value='';

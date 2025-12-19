@@ -26,17 +26,17 @@ export default async function handler(req, res) {
     let oldLeave = null;
     let isNew = true;
     if (l.id) {
-      // Employees cannot edit existing leave entries
-      if(user.role==='EMPLOYEE'){
-        return res.status(403).json({ ok:false, error:'forbidden' });
-      }
       try {
-        const { rows } = await sql`SELECT * FROM leaves WHERE id=${l.id}`;
-        const owner = rows?.[0]?.created_by;
-        if(owner && owner !== user.id && user.role==='EMPLOYEE'){
-          return res.status(403).json({ ok:false, error:'forbidden' });
-        }
+        const { rows } = await sql`SELECT id, created_by, status, days FROM leaves WHERE id=${l.id}`;
         if (rows?.[0]) {
+          // Existing record found: employees are not allowed to edit
+          if (user.role === 'EMPLOYEE') {
+            return res.status(403).json({ ok:false, error:'forbidden' });
+          }
+          const owner = rows[0]?.created_by;
+          if(owner && owner !== user.id && user.role==='EMPLOYEE'){
+            return res.status(403).json({ ok:false, error:'forbidden' });
+          }
           oldLeave = rows[0];
           isNew = false;
         }
