@@ -889,6 +889,10 @@
       $$('.tab-content').forEach(s=>s.classList.remove('active')); $('#tab-reports').classList.add('active');
       setTimeout(()=>window.print(), 100);
     });
+    const gotoEmp = document.getElementById('gotoEmployeesBtn');
+    if(gotoEmp){
+      gotoEmp.addEventListener('click', ()=> activateTab('employees'));
+    }
   }
 
   // Calendar
