@@ -414,7 +414,13 @@
   // Employee tabs
   function renderEmployeeTabs(){
     const nav = $('#employeeTabsNav');
-    const html = DB.employees
+    const user = getCurrentUser();
+    let list = DB.employees;
+    // If employee role, restrict to their own record (by email)
+    if(user?.role === 'EMPLOYEE'){
+      list = DB.employees.filter(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+    }
+    const html = list
       .map(e => `<button class="employee-tab-nav ${state.selectedEmployee === e.id ? 'active' : ''}" data-emp-id="${e.id}">${e.name}</button>`)
       .join('');
     nav.innerHTML = html;
@@ -435,8 +441,8 @@
     });
     
     // Auto-select first employee if none selected
-    if(!state.selectedEmployee && DB.employees.length > 0){
-      state.selectedEmployee = DB.employees[0].id;
+    if(!state.selectedEmployee && list.length > 0){
+      state.selectedEmployee = list[0].id;
       renderEmployeeTabs();
     }
   }
@@ -506,18 +512,22 @@
   function renderEmployees(){
     const tbody = $('#employeesTable tbody');
     const q = ($('#employeeSearch').value||'').toLowerCase();
-    
+    const user = getCurrentUser();
     // If an employee is selected, show only that employee
-    const employees = state.selectedEmployee 
+    let employees = state.selectedEmployee 
       ? DB.employees.filter(e => e.id === state.selectedEmployee)
       : DB.employees;
+    // Further restrict for EMPLOYEE role
+    if(user?.role === 'EMPLOYEE'){
+      employees = DB.employees.filter(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+    }
     const rows = employees
       .filter(e => `${e.name} ${e.jobTitle||''} ${e.department||''} ${e.email||''}`.toLowerCase().includes(q))
       .map(emp =>{
         const totals = annualTotalsFor(emp.id, state.year);
         const tr = document.createElement('tr');
         const carryFwdBtn = getCarryForwardBalance(emp.id, state.year) > 0 ? `<button class="ghost" data-act="carry" data-id="${emp.id}" title="Carry forward ${getCarryForwardBalance(emp.id, state.year)} days to ${state.year+1}">Carry Fwd</button>` : '';
-        tr.innerHTML = `
+        const actions = (user?.role === 'EMPLOYEE') ? '' : `
           <td>${emp.name||''}</td>
           <td>${emp.email||''}</td>
           <td>${emp.role||'EMPLOYEE'}</td>
@@ -532,6 +542,17 @@
             <button class="danger" data-act="del" data-id="${emp.id}">Delete</button>
             ${carryFwdBtn}
           </td>`;
+        tr.innerHTML = actions || `
+          <td>${emp.name||''}</td>
+          <td>${emp.email||''}</td>
+          <td>${emp.role||'EMPLOYEE'}</td>
+          <td>${emp.jobTitle||''}</td>
+          <td>${emp.department||''}</td>
+          <td>${emp.dateJoined||''}</td>
+          <td>${totals.entitlement}</td>
+          <td>${totals.taken}</td>
+          <td>${totals.balance}</td>
+          <td></td>`;
         return tr;
       });
     tbody.innerHTML = '';
@@ -637,20 +658,24 @@
     $('#employeeSearch').addEventListener('input', renderEmployees);
   }
   function renderEmployeeOptions(){
-    const opts = DB.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    const user = getCurrentUser();
+    const list = (user?.role==='EMPLOYEE')
+      ? DB.employees.filter(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase())
+      : DB.employees;
+    const opts = list.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     ['leaveEmployee','filterEmployee','reportEmployee'].forEach(id=>{
       const el = $('#'+id); if(!el) return;
       const previous = el.value; // remember current selection
-      const keep = id==='filterEmployee';
+      const keep = id==='filterEmployee' && user?.role!=='EMPLOYEE';
       el.innerHTML = keep ? `<option value="">All Employees</option>${opts}` : opts;
       // Restore previous selection if still available; otherwise use sensible default
-      const hasPrev = previous==='' || DB.employees.some(e=>e.id===previous);
+      const hasPrev = previous===' ' || list.some(e=>e.id===previous);
       if(hasPrev) {
         el.value = previous;
       } else if(keep) {
         el.value = '';
-      } else if(DB.employees.length){
-        el.value = DB.employees[0].id;
+      } else if(list.length){
+        el.value = list[0].id;
       } else {
         el.value = '';
       }
@@ -1129,6 +1154,14 @@
       const userInfo = document.getElementById('userInfo');
       if(userInfo){
         userInfo.innerHTML = `<span class="user">${serverUser.name||serverUser.email} • ${serverUser.role}</span>`;
+      }
+      // Restrict UI for EMPLOYEE role
+      if(serverUser.role === 'EMPLOYEE'){
+        // Hide Settings tab entirely
+        const tabBtn = document.querySelector('.tab[data-tab="settings"]');
+        const tabSection = document.getElementById('tab-settings');
+        if(tabBtn) tabBtn.style.display = 'none';
+        if(tabSection) tabSection.style.display = 'none';
       }
       
       // Setup logout button
