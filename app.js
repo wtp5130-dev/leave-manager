@@ -1271,6 +1271,23 @@
       if(!DB.holidays.includes(d)) DB.holidays.push(d);
       saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
+    const holClear = document.getElementById('holClearBtn');
+    if(holClear){
+      holClear.addEventListener('click', async ()=>{
+        if(!confirm('Remove ALL public holidays from the system? This affects all years.')) return;
+        try{
+          DB.holidays = [];
+          saveDB(DB);
+          await apiSetHolidays([]);
+          await refreshFromServer();
+          renderHolidays(); buildReportCard();
+          alert('All holidays cleared.');
+        }catch(e){
+          console.error('Clear holidays error:', e);
+          alert('Failed to clear on server: ' + (e?.message||'unknown'));
+        }
+      });
+    }
     // Quick-load: Malaysia 2026 National + Selangor
     const my2026Btn = document.getElementById('loadMY2026');
     if (my2026Btn) {
