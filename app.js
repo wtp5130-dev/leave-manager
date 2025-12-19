@@ -957,27 +957,71 @@
       if(!DB.holidays.includes(d)) DB.holidays.push(d);
       saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
+    $('#showCountriesBtn').addEventListener('click', async ()=>{
+      const container = $('#countriesListContainer');
+      const list = $('#countriesList');
+      if(container.style.display === 'none'){
+        try{
+          const r = await fetch('https://date.nager.at/api/v3/AvailableCountries');
+          if(r.ok){
+            const countries = await r.json();
+            const codes = countries.map(c => `${c.countryCode} (${c.name})`).sort();
+            list.innerHTML = codes.join(' • ') + '<br/><small style="color: #999;">Note: Some countries may not have data for all years.</small>';
+          }else{
+            list.innerHTML = 'Common codes: SG (Singapore) • US (United States) • GB (United Kingdom) • AU (Australia) • DE (Germany) • FR (France) • IT (Italy) • JP (Japan)';
+          }
+          container.style.display = 'block';
+        }catch(e){
+          console.error('Could not fetch countries list:', e);
+          list.innerHTML = 'Common codes: SG • US • GB • AU • DE • FR • IT • JP • CN • IN • MX • BR';
+          container.style.display = 'block';
+        }
+      }else{
+        container.style.display = 'none';
+      }
+    });
     $('#fetchHolidays').addEventListener('click', async ()=>{
-      const year = Number($('#holYear').value)||state.year; const cc = ($('#holCountry').value||'').toUpperCase();
+      const year = Number($('#holYear').value)||state.year; 
+      const cc = ($('#holCountry').value||'').toUpperCase().trim();
       if(!cc){ alert('Enter 2-letter country code, e.g., SG'); return; }
+      if(cc.length !== 2){
+        alert('Country code must be exactly 2 letters (e.g., SG, US, MY)');
+        return;
+      }
+      
       try{
-        console.log(`Fetching holidays for ${cc} in ${year}...`);
-        const r = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`);
-        console.log(`Response status: ${r.status}`);
+        console.log(`Attempting to fetch holidays for ${cc} in ${year}...`);
+        const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`;
+        console.log(`API URL: ${url}`);
         
-        // Handle 204 No Content (API found nothing)
+        const r = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        console.log(`Response status: ${r.status}, Content-Length: ${r.headers.get('content-length')}`);
+        
+        // Handle 204 No Content (API found nothing or country not supported)
         if(r.status === 204){
-          alert(`No holidays found for country code "${cc}" in ${year}.\n\nTry:\n- Verify country code is valid (e.g., SG, US, MY, GB, AU, IN)\n- Check if year is supported by the API`);
+          alert(`Country code "${cc}" returned no data for ${year}.\n\nThis could mean:\n- The country code is not supported by the API\n- No holiday data is available for that year\n\nTry these verified codes:\n- SG (Singapore)\n- US (United States)\n- GB (United Kingdom)\n- AU (Australia)\n- DE (Germany)\n\nOr manually add holidays using the "Add Date" field below.`);
+          return;
+        }
+        
+        if(r.status === 404){
+          alert(`Country code "${cc}" not found in the API.\n\nCommon valid codes:\n- SG, US, GB, AU, DE, FR, IT, JP, CN, IN\n\nSee https://date.nager.at/api/v3/AvailableCountries for full list.`);
           return;
         }
         
         if(!r.ok) {
           const errorText = await r.text();
           console.error(`API error: ${r.status} - ${errorText}`);
-          throw new Error(`API returned ${r.status}`);
+          throw new Error(`API returned status ${r.status}: ${errorText || 'Unknown error'}`);
         }
         
-        const list = await r.json();
+        const text = await r.text();
+        if(!text) throw new Error('Empty response from API');
+        
+        const list = JSON.parse(text);
         if(!Array.isArray(list)) throw new Error('Invalid API response format');
         console.log(`Fetched ${list.length} holidays`);
         
@@ -985,11 +1029,13 @@
         const set = new Set(DB.holidays||[]);
         dates.forEach(d=>set.add(d));
         DB.holidays = Array.from(set).sort();
-        saveDB(DB); await apiSetHolidays(DB.holidays); await refreshFromServer();
-        alert(`Successfully added ${dates.length} holidays for ${cc} ${year}`);
+        saveDB(DB); 
+        await apiSetHolidays(DB.holidays); 
+        await refreshFromServer();
+        alert(`✓ Successfully added ${dates.length} holidays for ${cc} ${year}`);
       }catch(err){
         console.error('Holiday fetch error:', err);
-        alert(`Could not fetch holidays: ${err.message}\n\nTroubleshooting:\n- Check country code (e.g., SG, US, MY, GB, AU, IN)\n- Verify year is valid\n- Try again later if API is down\n- See console for details`);
+        alert(`Error fetching holidays:\n${err.message}\n\nAlternatively, use the "Add Date" field to manually add holidays one by one.`);
       }
     });
     $('#holidaysTable').addEventListener('click', (e)=>{

@@ -246,10 +246,15 @@
         <h2>Holidays</h2>
         <div class="controls">
           <label>Year<input id="holYear" type="number" min="2000" max="2100" /></label>
-          <label>Country Code<input id="holCountry" placeholder="SG, US, MY..." maxlength="2" /></label>
+          <label>Country Code<input id="holCountry" placeholder="e.g., SG, US, GB" maxlength="2" /></label>
           <button id="fetchHolidays" class="ghost">Fetch Public Holidays</button>
+          <button id="showCountriesBtn" class="ghost" title="Show list of supported countries">Show Available Countries</button>
           <label>Add Date<input id="holAddDate" type="date" /></label>
           <button id="holAddBtn" class="ghost">Add</button>
+        </div>
+        <div id="countriesListContainer" style="display:none; margin-top: 1rem;">
+          <p><strong>Supported countries (updated Nov 2024):</strong></p>
+          <p id="countriesList" style="font-size: 0.9em; line-height: 1.6;"></p>
         </div>
         <div class="table-wrap">
           <table class="table" id="holidaysTable">
