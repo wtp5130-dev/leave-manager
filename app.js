@@ -329,8 +329,8 @@
         updateYearTabs();
         
         // Re-render all content with new year
-        $('#reportYear').value = year;
-        $('#empEntYear').value = year;
+        const r = $('#reportYear'); if(r) r.value = year;
+        const eey = $('#empEntYear'); if(eey) eey.value = year;
         renderEmployees();
         renderLeaves();
         buildReportCard();
@@ -639,7 +639,11 @@
 
   // Report (Card)
   function buildReportCard(){
-    const empId = $('#reportEmployee').value; const year = Number($('#reportYear').value)||state.year;
+    // Use global selections by default; fall back to local controls if they exist
+    const empSelect = $('#reportEmployee');
+    const yearSelect = $('#reportYear');
+    const empId = (empSelect && empSelect.value) || state.selectedEmployee || (DB.employees[0]?.id || '');
+    const year = (yearSelect && Number(yearSelect.value)) || state.year;
     const container = $('#cardContainer');
     if(!empId){ container.innerHTML = '<p>Select an employee to view the leave card.</p>'; return; }
     const emp = getEmployee(empId); if(!emp){ container.innerHTML = '<p>Employee not found.</p>'; return; }
@@ -737,8 +741,10 @@
     $('#printBtn').addEventListener('click', ()=>{ window.print(); });
     $('#printCardBtn').addEventListener('click', ()=>{
       // Jump to report tab then print
-      $('#reportEmployee').value = $('#leaveEmployee').value || (DB.employees[0]?.id||'');
-      $('#reportYear').value = state.year;
+      const repEmp = $('#reportEmployee');
+      const repYear = $('#reportYear');
+      if(repEmp){ repEmp.value = state.selectedEmployee || $('#leaveEmployee').value || (DB.employees[0]?.id||''); }
+      if(repYear){ repYear.value = state.year; }
       buildReportCard();
       $$('.tab').forEach(b=>b.classList.remove('active')); $('[data-tab="reports"]').classList.add('active');
       $$('.tab-content').forEach(s=>s.classList.remove('active')); $('#tab-reports').classList.add('active');
@@ -904,14 +910,13 @@
     y.addEventListener('change', ()=>{
       state.year = Number(y.value)||new Date().getFullYear();
       updateYearTabs();
-      $('#reportYear').value = state.year;
-      $('#empEntYear').value = state.year;
+      const r = $('#reportYear'); if(r) r.value = state.year;
+      const eey = $('#empEntYear'); if(eey) eey.value = state.year;
       renderEmployees(); renderLeaves(); buildReportCard();
     });
-    $('#reportYear').value = state.year;
-    $('#reportYear').addEventListener('change', ()=> buildReportCard());
-    $('#reportEmployee').addEventListener('change', ()=> buildReportCard());
-    $('#refreshReport').addEventListener('click', ()=> buildReportCard());
+    const r = $('#reportYear'); if(r){ r.value = state.year; r.addEventListener('change', ()=> buildReportCard()); }
+    const re = $('#reportEmployee'); if(re){ re.addEventListener('change', ()=> buildReportCard()); }
+    const rr = $('#refreshReport'); if(rr){ rr.addEventListener('click', ()=> buildReportCard()); }
     
     // Year tabs
     $$('.year-tab').forEach(tab=>{
@@ -919,8 +924,8 @@
         state.year = Number(tab.dataset.year);
         y.value = state.year;
         updateYearTabs();
-        $('#reportYear').value = state.year;
-        $('#empEntYear').value = state.year;
+        const r = $('#reportYear'); if(r) r.value = state.year;
+        const eey = $('#empEntYear'); if(eey) eey.value = state.year;
         renderEmployees(); renderLeaves(); buildReportCard();
       });
     });
