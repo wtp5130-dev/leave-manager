@@ -488,7 +488,7 @@
       btn.addEventListener('click', async ()=>{
         const year = Number(btn.dataset.year);
         state.year = year;
-        $('#yearInput').value = year;
+        const yi = $('#yearInput'); if(yi) yi.value = year;
         
         // Update year tab active state
         $$('.year-tab-nav').forEach(b=>b.classList.remove('active'));
@@ -1104,14 +1104,16 @@
   // Year controls
   function bindYear(){
     const y = $('#yearInput');
-    y.value = state.year;
-    y.addEventListener('change', ()=>{
-      state.year = Number(y.value)||new Date().getFullYear();
-      updateYearTabs();
-      const r = $('#reportYear'); if(r) r.value = state.year;
-      const eey = $('#empEntYear'); if(eey) eey.value = state.year;
-      renderEmployees(); renderLeaves(); buildReportCard(); renderReportLeaves();
-    });
+    if(y){
+      y.value = state.year;
+      y.addEventListener('change', ()=>{
+        state.year = Number(y.value)||new Date().getFullYear();
+        updateYearTabs();
+        const r = $('#reportYear'); if(r) r.value = state.year;
+        const eey = $('#empEntYear'); if(eey) eey.value = state.year;
+        renderEmployees(); renderLeaves(); buildReportCard(); renderReportLeaves();
+      });
+    }
     const r = $('#reportYear'); if(r){ r.value = state.year; r.addEventListener('change', ()=> { buildReportCard(); renderReportLeaves(); }); }
     const re = $('#reportEmployee'); if(re){ re.addEventListener('change', ()=> { buildReportCard(); renderReportLeaves(); }); }
     const rr = $('#refreshReport'); if(rr){ rr.addEventListener('click', ()=> { buildReportCard(); renderReportLeaves(); }); }
@@ -1314,7 +1316,7 @@
     tbody.innerHTML = items.map(h=>`<tr><td>${h.date}</td><td>${h.name||''}</td><td><button class="danger" data-date="${h.date}" data-act="del-hol">Remove</button></td></tr>`).join('') || '<tr><td colspan="3">No holidays configured.</td></tr>';
   }
   function bindHolidays(){
-    $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; $('#yearInput').value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
+    $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; const yi=$('#yearInput'); if(yi) yi.value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
     $('#holAddBtn').addEventListener('click', ()=>{
       const d = $('#holAddDate').value; if(!d) return;
       const exists = (DB.holidays||[]).some(x => (typeof x==='string'? x : x.date) === d);
