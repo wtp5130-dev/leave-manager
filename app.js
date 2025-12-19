@@ -1300,6 +1300,76 @@
         renderHolidays(); buildReportCard();
       });
     }
+
+    // Quick-load: Malaysia 2025 National + Selangor
+    const my2025Btn = document.getElementById('loadMY2025');
+    if (my2025Btn) {
+      my2025Btn.addEventListener('click', async ()=>{
+        const dates = [
+          '2025-01-01', // New Year's Day
+          '2025-01-29', // Chinese New Year
+          '2025-01-30', // Chinese New Year Holiday
+          '2025-02-11', // Thaipusam (Selangor)
+          '2025-03-18', // Nuzul Al-Quran (Selangor included)
+          '2025-03-31', // Hari Raya Aidilfitri
+          '2025-04-01', // Hari Raya Aidilfitri Holiday
+          '2025-05-01', // Labour Day
+          '2025-05-12', // Wesak Day
+          '2025-06-02', // Agong's Birthday
+          '2025-06-07', // Hari Raya Haji
+          '2025-06-27', // Awal Muharram
+          '2025-08-31', // Merdeka Day
+          '2025-09-01', // Merdeka Day Holiday (Selangor included)
+          '2025-09-05', // Prophet Muhammad's Birthday
+          '2025-09-15', // Malaysia Day Holiday (Nat)
+          '2025-09-16', // Malaysia Day
+          '2025-10-20', // Deepavali
+          '2025-12-11', // Sultan of Selangor's Birthday
+          '2025-12-25'  // Christmas Day
+        ];
+        const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
+        DB.holidays = Array.from(set).sort(); saveDB(DB);
+        try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2025 public holidays (National + Selangor).'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        state.year = 2025; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2025'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2025';
+        renderHolidays(); buildReportCard();
+      });
+    }
+
+    // Quick-load: Malaysia 2027 National + Selangor
+    const my2027Btn = document.getElementById('loadMY2027');
+    if (my2027Btn) {
+      my2027Btn.addEventListener('click', async ()=>{
+        const dates = [
+          '2027-01-01', // New Year's Day
+          '2027-01-22', // Thaipusam (Selangor)
+          '2027-02-06', // Chinese New Year
+          '2027-02-07', // Chinese New Year Holiday
+          '2027-02-08', // Chinese New Year Holiday (Nat except Kedah)
+          '2027-02-24', // Nuzul Al-Quran (Selangor included)
+          '2027-03-10', // Hari Raya Aidilfitri
+          '2027-03-11', // Hari Raya Aidilfitri Holiday
+          '2027-05-01', // Labour Day
+          '2027-05-17', // Hari Raya Haji
+          '2027-05-20', // Wesak Day
+          '2027-06-06', // Awal Muharram
+          '2027-06-07', // Agong's Birthday
+          '2027-08-15', // Prophet Muhammad's Birthday
+          '2027-08-16', // Prophet Muhammad's Birthday Holiday (Nat except KK&T)
+          '2027-08-31', // Merdeka Day
+          '2027-09-16', // Malaysia Day
+          '2027-10-28', // Deepavali
+          '2027-12-11', // Sultan of Selangor's Birthday
+          '2027-12-25'  // Christmas Day
+        ];
+        const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
+        DB.holidays = Array.from(set).sort(); saveDB(DB);
+        try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2027 public holidays (National + Selangor).'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        state.year = 2027; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2027'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2027';
+        renderHolidays(); buildReportCard();
+      });
+    }
     $('#showCountriesBtn').addEventListener('click', async ()=>{
       const container = $('#countriesListContainer');
       const list = $('#countriesList');
