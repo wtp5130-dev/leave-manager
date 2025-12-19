@@ -55,7 +55,17 @@
     return r.json().catch(()=>({ ok:true }));
   }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
-  async function apiSetHolidays(dates){ const r = await fetch('/api/holidays-set', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates }) }); if(!r.ok) throw new Error('Holidays set failed'); }
+  async function apiSetHolidays(dates){
+    const r = await fetch('/api/holidays-set', {
+      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates })
+    });
+    if(!r.ok){
+      let msg = 'Holidays set failed';
+      try{ const j = await r.json(); if(j?.error) msg = j.error; }catch{}
+      throw new Error(msg);
+    }
+    return r.json().catch(()=>({ ok:true }));
+  }
   
   // User management API helpers
   async function apiGetUsers(){ const r = await fetch('/api/users-list'); if(!r.ok) throw new Error('Load users failed'); const j = await r.json(); return j.users || []; }
@@ -1293,7 +1303,7 @@
         DB.holidays = Array.from(set).sort();
         saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2026 public holidays (National + Selangor).'); }
-        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
         // Switch context to 2026 for easy viewing
         state.year = 2026; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2026';
         const ny = document.getElementById('yearInput'); if(ny) ny.value = '2026';
@@ -1330,7 +1340,7 @@
         const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
         DB.holidays = Array.from(set).sort(); saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2025 public holidays (National + Selangor).'); }
-        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
         state.year = 2025; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2025'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2025';
         renderHolidays(); buildReportCard();
       });
@@ -1365,7 +1375,7 @@
         const set = new Set(DB.holidays||[]); dates.forEach(d=>set.add(d));
         DB.holidays = Array.from(set).sort(); saveDB(DB);
         try{ await apiSetHolidays(DB.holidays); await refreshFromServer(); alert('Loaded Malaysia 2027 public holidays (National + Selangor).'); }
-        catch(e){ console.error(e); alert('Failed to save holidays to server. They are stored locally.'); }
+        catch(e){ console.error(e); alert('Failed to save holidays to server: ' + (e?.message||'unknown') + '\nThey are stored locally.'); }
         state.year = 2027; const ysel = document.getElementById('holYear'); if(ysel) ysel.value = '2027'; const ny = document.getElementById('yearInput'); if(ny) ny.value = '2027';
         renderHolidays(); buildReportCard();
       });
