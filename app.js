@@ -651,11 +651,13 @@
     $('#leaveDays').value = String(workingDays(from,to));
   }
   function bindLeaveForm(){
+    const form = document.getElementById('leaveForm');
+    if(!form) return; // Leaves tab not present
     $('#leaveFrom').addEventListener('change', recomputeLeaveDays);
     $('#leaveTo').addEventListener('change', recomputeLeaveDays);
     $('#leaveType').addEventListener('change', recomputeLeaveDays);
 
-    $('#leaveForm').addEventListener('submit', async (e)=>{
+    form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const submitBtn = $('#leaveForm button[type="submit"]');
       const origText = submitBtn ? submitBtn.textContent : '';
@@ -677,7 +679,7 @@
         saveDB(DB);
         await apiSaveLeave(entry);
         await refreshFromServer();
-        $('#leaveForm').reset(); $('#leaveId').value='';
+        form.reset(); $('#leaveId').value='';
         alert('Leave submitted.');
       }catch(err){
         console.error('Leave submit error:', err);
@@ -687,12 +689,13 @@
       }
     });
 
-    $('#leaveCancelBtn').addEventListener('click', ()=>{
-      $('#leaveForm').reset(); $('#leaveId').value='';
-    });
+    const cancel = document.getElementById('leaveCancelBtn');
+    if(cancel){ cancel.addEventListener('click', ()=>{ form.reset(); $('#leaveId').value=''; }); }
   }
   function renderLeaves(){
-    const tbody = $('#leavesTable tbody');
+    const table = document.querySelector('#leavesTable tbody');
+    if(!table) return; // Leaves tab not present
+    const tbody = table;
     const empFilter = $('#filterEmployee').value || '';
     const typeFilter = $('#filterType').value || '';
     const statusFilter = $('#filterStatus').value || '';
@@ -726,7 +729,9 @@
     tbody.innerHTML=''; rows.forEach(r=>tbody.appendChild(r));
   }
   function bindLeavesTable(){
-    $('#leavesTable').addEventListener('click', async (e)=>{
+    const leavesTable = document.getElementById('leavesTable');
+    if(!leavesTable) return; // Leaves tab not present
+    leavesTable.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
       const id = btn.dataset.id; const act = btn.dataset.act;
       if(act==='edit'){
@@ -770,10 +775,10 @@
         }
       }
     });
-    $('#filterEmployee').addEventListener('change', renderLeaves);
-    $('#filterType').addEventListener('change', renderLeaves);
-    $('#filterStatus').addEventListener('change', renderLeaves);
-    $('#filterSearch').addEventListener('input', renderLeaves);
+    const fe = document.getElementById('filterEmployee'); if(fe) fe.addEventListener('change', renderLeaves);
+    const ft = document.getElementById('filterType'); if(ft) ft.addEventListener('change', renderLeaves);
+    const fs = document.getElementById('filterStatus'); if(fs) fs.addEventListener('change', renderLeaves);
+    const fsearch = document.getElementById('filterSearch'); if(fsearch) fsearch.addEventListener('input', renderLeaves);
   }
 
   // Report (Card)

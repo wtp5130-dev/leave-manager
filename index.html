@@ -77,7 +77,6 @@
 
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="employees" role="tab">Employees</button>
-    <button class="tab" data-tab="leaves" role="tab">Leaves</button>
     <button class="tab" data-tab="calendar" role="tab">Calendar</button>
     <button class="tab" data-tab="reports" role="tab">Report</button>
     <button class="tab" data-tab="settings" role="tab">Settings</button>
@@ -154,88 +153,7 @@
         </div>
       </div>
     </section>
-    <section id="tab-leaves" class="tab-content" aria-labelledby="Leaves">
-      <div class="panel">
-        <h2>New Leave</h2>
-        <form id="leaveForm" class="grid">
-          <input type="hidden" id="leaveId" />
-          <label>Employee<select id="leaveEmployee" required></select></label>
-          <label>Type
-            <select id="leaveType" required>
-              <option value="ANNUAL">Annual Leave</option>
-              <option value="SL">Sick Leave (SL)</option>
-              <option value="HL">Hospitalisation (HL)</option>
-              <option value="TC">Time Chit (TC)</option>
-              <option value="MATERNITY">Maternity</option>
-              <option value="PATERNITY">Paternity</option>
-              <option value="MARRIAGE">Marriage</option>
-              <option value="COMPASSIONATE">Compassionate</option>
-            </select>
-          </label>
-          <label>Status
-            <select id="leaveStatus" disabled>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </label>
-          <label>Application Date<input id="leaveApplied" type="date" /></label>
-          <label>From<input id="leaveFrom" type="date" required /></label>
-          <label>To<input id="leaveTo" type="date" required /></label>
-          <label>Working Days (auto)<input id="leaveDays" type="number" step="0.5" min="0" readonly /></label>
-          <label class="grid-span-2">Reason<textarea id="leaveReason" rows="2" placeholder="Optional"></textarea></label>
-          <div class="form-actions grid-span-2">
-            <button type="submit" class="primary">Submit Leave</button>
-            <button type="reset" id="leaveCancelBtn" class="ghost">Clear</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h2>All Leaves</h2>
-          <div class="filters">
-            <select id="filterEmployee"></select>
-            <select id="filterType">
-              <option value="">All Types</option>
-              <option value="ANNUAL">Annual</option>
-              <option value="SL">SL</option>
-              <option value="HL">HL</option>
-              <option value="TC">TC</option>
-              <option value="MATERNITY">Maternity</option>
-              <option value="PATERNITY">Paternity</option>
-              <option value="MARRIAGE">Marriage</option>
-              <option value="COMPASSIONATE">Compassionate</option>
-            </select>
-            <select id="filterStatus">
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-            <input id="filterSearch" placeholder="Search reason..." />
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table id="leavesTable" class="table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Applied</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Days</th>
-                <th>Reason</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    
 
     <!-- Reports -->
     <section id="tab-reports" class="tab-content" aria-labelledby="Report">
