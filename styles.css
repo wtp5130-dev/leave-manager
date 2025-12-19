@@ -254,6 +254,20 @@ textarea{resize:vertical}
   text-decoration: line-through;
 }
 
+/* Report form alignment (Leaves apply form) */
+#reportLeaveForm{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap:12px;
+  align-items:end;
+}
+#reportLeaveForm .grid-span-2{ grid-column: 1 / -1; }
+
+/* Make date picker icon visible on dark theme */
+input[type="date"]{ color-scheme: dark; padding-right: 30px; }
+input[type="date"]::-webkit-calendar-picker-indicator{ filter: invert(1); opacity:1; cursor:pointer; }
+input[type="date"]::-ms-clear{ display:none; }
+
 .print-only{display:none}
 @media print{
   body{background:white}
