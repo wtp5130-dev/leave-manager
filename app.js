@@ -750,6 +750,9 @@
   let calendarState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
   function renderCalendar() {
+    const calContainer = $('#calendarContainer');
+    if (!calContainer) return; // Element doesn't exist yet
+    
     const year = calendarState.year;
     const month = calendarState.month;
     const today = new Date();
@@ -763,7 +766,8 @@
     
     // Update header
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    $('#calCurrentMonth').textContent = `${monthNames[month]} ${year}`;
+    const headerEl = $('#calCurrentMonth');
+    if (headerEl) headerEl.textContent = `${monthNames[month]} ${year}`;
     
     // Filter by selected employee
     const selectedEmpId = $('#calEmployeeFilter')?.value;
@@ -809,7 +813,7 @@
         <div class="cal-leaves">`;
       
       Object.entries(leavesByEmp).forEach(([empId, leaves]) => {
-        const emp = DB.employees.find(e => e.id === empId);
+        const emp = DB.employees?.find(e => e.id === empId);
         leaves.forEach(l => {
           const status = l.status || 'PENDING';
           html += `<div class="cal-leave-item ${l.type} ${status}" title="${emp?.name} - ${l.type} (${status})">${emp?.name}</div>`;
@@ -832,7 +836,7 @@
     }
     
     html += '</tr></tbody></table>';
-    $('#calendarContainer').innerHTML = html;
+    calContainer.innerHTML = html;
   }
 
   function updateCalendarEmployeeFilter() {
@@ -847,28 +851,40 @@
   }
 
   function bindCalendar() {
+    if (!$('#calendarContainer')) return; // Calendar section doesn't exist
+    
     updateCalendarEmployeeFilter();
     renderCalendar();
     
-    $('#calPrevMonth')?.addEventListener('click', () => {
-      calendarState.month--;
-      if (calendarState.month < 0) {
-        calendarState.month = 11;
-        calendarState.year--;
-      }
-      renderCalendar();
-    });
+    const prevBtn = $('#calPrevMonth');
+    const nextBtn = $('#calNextMonth');
+    const filterSelect = $('#calEmployeeFilter');
     
-    $('#calNextMonth')?.addEventListener('click', () => {
-      calendarState.month++;
-      if (calendarState.month > 11) {
-        calendarState.month = 0;
-        calendarState.year++;
-      }
-      renderCalendar();
-    });
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        calendarState.month--;
+        if (calendarState.month < 0) {
+          calendarState.month = 11;
+          calendarState.year--;
+        }
+        renderCalendar();
+      });
+    }
     
-    $('#calEmployeeFilter')?.addEventListener('change', renderCalendar);
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        calendarState.month++;
+        if (calendarState.month > 11) {
+          calendarState.month = 0;
+          calendarState.year++;
+        }
+        renderCalendar();
+      });
+    }
+    
+    if (filterSelect) {
+      filterSelect.addEventListener('change', renderCalendar);
+    }
   }
 
   // Year controls
