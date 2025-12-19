@@ -17,28 +17,67 @@
     </div>
     <div class="header-actions">
       <div id="userInfo" class="auth-box"></div>
+      
+      <!-- Year Selector -->
       <label class="year-picker">Year
-        <input id="yearInput" type="number" min="2000" max="2100" step="1" />
+        <select id="yearInput">
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+          <option value="2028">2028</option>
+          <option value="2029">2029</option>
+          <option value="2030">2030</option>
+        </select>
       </label>
+      
+      <!-- Primary Action -->
       <div class="button-group">
         <button id="printCardBtn" class="primary">Print Card</button>
       </div>
+      
+      <!-- Data Management -->
       <div class="button-group secondary">
-        <button id="exportBtn" class="ghost" title="Export data as JSON">Export</button>
+        <button id="exportBtn" class="ghost" title="Export data as JSON">Export JSON</button>
         <label class="import" title="Import data from JSON">
           <input id="importInput" type="file" accept="application/json" hidden />
-          <span class="button ghost" id="importBtn">Import</span>
+          <span class="button ghost" id="importBtn">Import JSON</span>
         </label>
       </div>
+      
+      <!-- Cloud Sync -->
+      <div class="cloud">
+        <input id="cloudDocId" placeholder="cloud doc id" value="default" />
+        <button id="cloudLoadBtn" class="ghost" title="Load from cloud">Load</button>
+        <button id="cloudSaveBtn" class="ghost" title="Save to cloud">Save</button>
+        <small id="cloudStatus" style="color:var(--muted)"></small>
+      </div>
+      
+      <!-- Logout -->
       <div class="button-group secondary">
         <button id="logoutBtn" class="ghost">Logout</button>
       </div>
     </div>
   </header>
 
+  <nav class="employee-tabs-nav" role="tablist" id="employeeTabsNav">
+    <!-- Employee tabs will be populated by JS -->
+  </nav>
+
+  <nav class="year-tabs-nav" role="tablist">
+    <button class="year-tab-nav active" data-year="2024" role="tab">2024</button>
+    <button class="year-tab-nav" data-year="2025" role="tab">2025</button>
+    <button class="year-tab-nav" data-year="2026" role="tab">2026</button>
+  </nav>
+
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="employees" role="tab">Employees</button>
     <button class="tab" data-tab="leaves" role="tab">Leaves</button>
+    <button class="tab" data-tab="calendar" role="tab">Calendar</button>
     <button class="tab" data-tab="reports" role="tab">Report</button>
     <button class="tab" data-tab="settings" role="tab">Settings</button>
   </nav>
@@ -64,7 +103,21 @@
           </label>
           <div class="grid-span-2"></div>
           <h3 class="grid-span-2">Annual Leave Entitlement</h3>
-          <label>Year<input id="empEntYear" type="number" min="2000" max="2100" /></label>
+          <label>Year
+            <select id="empEntYear">
+              <option value="2020">2020</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024" selected>2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+          </label>
           <label>Carry Forward (days)<input id="empCarry" type="number" step="0.5" min="0" /></label>
           <label>Current Year (days)<input id="empCurrent" type="number" step="0.5" min="0" /></label>
           <div class="form-actions grid-span-2">
@@ -131,7 +184,7 @@
           <label>Working Days (auto)<input id="leaveDays" type="number" step="0.5" min="0" readonly /></label>
           <label class="grid-span-2">Reason<textarea id="leaveReason" rows="2" placeholder="Optional"></textarea></label>
           <div class="form-actions grid-span-2">
-            <button type="submit" class="primary">Save Leave</button>
+            <button type="submit" class="primary">Submit Leave</button>
             <button type="reset" id="leaveCancelBtn" class="ghost">Clear</button>
           </div>
         </form>
@@ -189,12 +242,46 @@
         <h2>Leave Card</h2>
         <div class="controls">
           <label>Employee<select id="reportEmployee"></select></label>
-          <label>Year<input id="reportYear" type="number" min="2000" max="2100" /></label>
+          <label>Year
+            <select id="reportYear">
+              <option value="2020">2020</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025" selected>2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+          </label>
           <button id="refreshReport" class="ghost">Refresh</button>
           <button id="printBtn" class="primary">Print</button>
         </div>
         <div id="cardContainer" class="card-container">
           <!-- Generated content will render here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Calendar -->
+    <section id="tab-calendar" class="tab-content" aria-labelledby="Calendar">
+      <div class="panel">
+        <h2>Leave Calendar</h2>
+        <div class="controls">
+          <button id="calPrevMonth" class="ghost">← Previous</button>
+          <span id="calCurrentMonth" style="font-weight: bold; min-width: 150px; text-align: center;">December 2025</span>
+          <button id="calNextMonth" class="ghost">Next →</button>
+          <label style="margin-left: 2rem;">Filter Employee
+            <select id="calEmployeeFilter">
+              <option value="">All Employees</option>
+            </select>
+          </label>
+        </div>
+        <div id="calendarContainer" style="margin-top: 1rem;">
+          <!-- Calendar will be rendered here -->
         </div>
       </div>
     </section>
@@ -219,17 +306,83 @@
       </div>
 
       <div class="panel">
+        <h2>Data Maintenance</h2>
+        <div class="controls">
+          <button id="resetCarryForwardBtn" class="ghost" title="Fix carry-forward values to correct amounts (max 5 days per year)">Reset Carry-Forward Values</button>
+        </div>
+      </div>
+
+      <div class="panel">
         <h2>Holidays</h2>
         <div class="controls">
-          <label>Year<input id="holYear" type="number" min="2000" max="2100" /></label>
-          <label>Country Code<input id="holCountry" placeholder="SG, US, MY..." maxlength="2" /></label>
+          <label>Year
+            <select id="holYear">
+              <option value="2020">2020</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025" selected>2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+          </label>
+          <label>Country Code<input id="holCountry" placeholder="e.g., SG, US, GB" maxlength="2" /></label>
           <button id="fetchHolidays" class="ghost">Fetch Public Holidays</button>
+          <button id="showCountriesBtn" class="ghost" title="Show list of supported countries">Show Available Countries</button>
           <label>Add Date<input id="holAddDate" type="date" /></label>
           <button id="holAddBtn" class="ghost">Add</button>
+        </div>
+        <div id="countriesListContainer" style="display:none; margin-top: 1rem;">
+          <p><strong>Supported countries (updated Nov 2024):</strong></p>
+          <p id="countriesList" style="font-size: 0.9em; line-height: 1.6;"></p>
         </div>
         <div class="table-wrap">
           <table class="table" id="holidaysTable">
             <thead><tr><th>Date</th><th>Name</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Audit Trail</h2>
+        <div class="controls">
+          <label>Filter by Action
+            <select id="auditActionFilter">
+              <option value="">All</option>
+              <option value="CREATE">Create</option>
+              <option value="UPDATE">Update</option>
+              <option value="DELETE">Delete</option>
+              <option value="APPROVE">Approve</option>
+              <option value="REJECT">Reject</option>
+            </select>
+          </label>
+          <label>Filter by Entity Type
+            <select id="auditEntityFilter">
+              <option value="">All</option>
+              <option value="LEAVE">Leave</option>
+              <option value="EMPLOYEE">Employee</option>
+              <option value="USER">User</option>
+              <option value="ENTITLEMENT">Entitlement</option>
+            </select>
+          </label>
+          <button id="loadAuditLogsBtn" class="primary">Load Audit Trail</button>
+        </div>
+        <div id="auditLogsContainer" class="table-wrap" style="margin-top: 1rem;">
+          <table class="table" id="auditLogsTable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Details</th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
         </div>

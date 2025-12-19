@@ -29,7 +29,7 @@
   };
 
   let DB = loadDB();
-  let state = { year: new Date().getFullYear() };
+  let state = { year: new Date().getFullYear(), autoCarryDone: false, selectedEmployee: null };
 
   // Database API helpers
   async function apiGetAll(){
@@ -42,7 +42,18 @@
     if(!r.ok) throw new Error('Employee save failed');
   }
   async function apiDeleteEmployee(id){ const r = await fetch(`/api/employee-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Employee delete failed'); }
-  async function apiSaveLeave(l){ const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) }); if(!r.ok) throw new Error('Leave save failed'); }
+  async function apiSaveLeave(l){
+    const r = await fetch('/api/leave', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(l) });
+    if(!r.ok){
+      let errMsg = 'Leave save failed';
+      try{ 
+        const j = await r.json();
+        if(j?.error) errMsg = j.error;
+      }catch(e){ console.error('error parsing response:', e); }
+      throw new Error(errMsg);
+    }
+    return r.json().catch(()=>({ ok:true }));
+  }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
   async function apiSetHolidays(dates){ const r = await fetch('/api/holidays-set', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates }) }); if(!r.ok) throw new Error('Holidays set failed'); }
   
@@ -141,7 +152,7 @@
   }
   function annualTotalsFor(empId, year){
     const totalDays = DB.leaves
-      .filter(l => l.employeeId===empId && l.type==='ANNUAL')
+      .filter(l => l.employeeId===empId && l.type==='ANNUAL' && (l.status==='APPROVED' || l.status===undefined))
       .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
     const ent = getEntitlement(getEmployee(empId), year);
     const entitlement = (ent.carry||0)+(ent.current||0);
@@ -150,8 +161,143 @@
   }
   function totalsByType(empId, year, type){
     return DB.leaves
-      .filter(l => l.employeeId===empId && l.type===type)
+      .filter(l => l.employeeId===empId && l.type===type && (l.status==='APPROVED' || l.status===undefined))
       .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
+  }
+  function getCarryForwardBalance(empId, year){
+    // Calculate unused balance from given year that should carry to next year
+    const totals = annualTotalsFor(empId, year);
+    return Math.min(5, Math.max(0, totals.balance)); // Cap at 5 days maximum
+  }
+  async function resetCarryForward(){
+    // Reset all carry-forward values to correct amounts (max 5 per year pair)
+    // This fixes any incorrect manual entries
+    console.log('=== RESETTING CARRY-FORWARD TO CORRECT VALUES ===');
+    const yearsToProcess = [2024, 2025, 2026];
+    let changes = false;
+    
+    for(const fromYear of yearsToProcess){
+      const toYear = fromYear + 1;
+      console.log(`\n--- Resetting ${fromYear}→${toYear} ---`);
+      
+      for(const emp of DB.employees){
+        const balance = getCarryForwardBalance(emp.id, fromYear); // This gives us the max 5 days
+        const ent = getEntitlement(emp, toYear);
+        const currentCarry = ent.carry||0;
+        
+        console.log(`${emp.name}: Year ${toYear} - Current carry: ${currentCarry}, Should be: ${balance}`);
+        
+        if(currentCarry !== balance){
+          console.log(`${emp.name}: ✓ Correcting carry from ${currentCarry} to ${balance}`);
+          setEntitlement(emp, toYear, balance, ent.current||0);
+          changes = true;
+        }
+      }
+    }
+    
+    if(changes){
+      saveDB(DB);
+      await apiSaveAllEmployees();
+      console.log('\n=== RESET COMPLETE ===');
+      alert('Carry-forward values reset to correct amounts. Refreshing...');
+      location.reload();
+    }else{
+      console.log('\n=== ALL CARRY VALUES ALREADY CORRECT ===');
+    }
+  }
+  async function autoCarryForward(){
+    // Only run once per app session to avoid duplicate carries
+    if(state.autoCarryDone) return;
+    state.autoCarryDone = true;
+    
+    // Automatically carry forward unused annual leave for all years
+    // Process: 2024→2025, 2025→2026, etc.
+    const yearsToProcess = [2024, 2025, 2026]; // Years to process carries FROM
+    
+    console.log(`=== AUTO CARRY-FORWARD: Processing years ${yearsToProcess.join(', ')} ===`);
+    let changes = false;
+    
+    for(const fromYear of yearsToProcess){
+      const toYear = fromYear + 1;
+      console.log(`\n--- Carrying from ${fromYear} to ${toYear} ---`);
+      
+      for(const emp of DB.employees){
+        const balance = getCarryForwardBalance(emp.id, fromYear);
+        const totals = annualTotalsFor(emp.id, fromYear);
+        console.log(`${emp.name}: Year ${fromYear} - Entitlement: ${totals.entitlement}, Taken: ${totals.taken}, Balance: ${totals.balance}, Carry Amount: ${balance}`);
+        
+        if(balance > 0){
+          const ent = getEntitlement(emp, toYear);
+          const currentCarry = ent.carry||0;
+          
+          // Check if carry from this specific year has already been applied
+          // by comparing if current carry matches what it should be (just the balance from this year)
+          const expectedCarry = balance; // Only the carry from this year pair, not accumulated
+          
+          console.log(`${emp.name}: Year ${toYear} - Before: carry=${currentCarry}, current=${ent.current||0}. Expected carry from ${fromYear}: ${expectedCarry}`);
+          
+          // Only set if it's not already correctly set (avoid duplicates)
+          if(currentCarry !== expectedCarry){
+            // If current carry is 0 or less than expected, set it to expected
+            // This handles the case where it hasn't been carried yet
+            if(currentCarry < expectedCarry){
+              setEntitlement(emp, toYear, expectedCarry, ent.current||0);
+              changes = true;
+              console.log(`${emp.name}: ✓ Set carry to ${expectedCarry}`);
+            }else{
+              console.log(`${emp.name}: ⊘ Carry already applied (${currentCarry} >= ${expectedCarry})`);
+            }
+          }
+        }
+      }
+    }
+    
+    if(changes){
+      saveDB(DB);
+      await apiSaveAllEmployees();
+      console.log('\n=== CARRY-FORWARD COMPLETE ===');
+    }else{
+      console.log('\n=== NO CHANGES NEEDED (Already applied) ===');
+    }
+  }
+  async function apiSaveAllEmployees(){
+    // Save all employees in bulk to backend
+    for(const emp of DB.employees){
+      for(const year in emp.entitlements||{}){
+        const ent = emp.entitlements[year];
+        try{
+          await apiSaveEmployee(emp, { year:Number(year), carry:ent.carry||0, current:ent.current||0 });
+        }catch(e){
+          console.error(`Error saving entitlements for ${emp.name} year ${year}:`, e);
+        }
+      }
+    }
+  }
+
+  // Employee tabs
+  function renderEmployeeTabs(){
+    const nav = $('#employeeTabsNav');
+    const html = DB.employees
+      .map(e => `<button class="employee-tab-nav ${state.selectedEmployee === e.id ? 'active' : ''}" data-emp-id="${e.id}">${e.name}</button>`)
+      .join('');
+    nav.innerHTML = html;
+    
+    // Bind click handlers
+    $$('.employee-tab-nav').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.selectedEmployee = btn.dataset.empId;
+        renderEmployeeTabs(); // Update active state
+        renderEmployees(); // Show this employee's data
+        renderLeaves(); // Show this employee's leaves
+        buildReportCard(); // Update report
+      });
+    });
+    
+    // Auto-select first employee if none selected
+    if(!state.selectedEmployee && DB.employees.length > 0){
+      state.selectedEmployee = DB.employees[0].id;
+      renderEmployeeTabs();
+    }
   }
 
   // Tabs
@@ -167,15 +313,56 @@
     })
   }
 
+  // Year tabs
+  function bindYearTabs(){
+    $$('.year-tab-nav').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const year = Number(btn.dataset.year);
+        state.year = year;
+        $('#yearInput').value = year;
+        
+        // Update year tab active state
+        $$('.year-tab-nav').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update year selector buttons
+        updateYearTabs();
+        
+        // Re-render all content with new year
+        $('#reportYear').value = year;
+        $('#empEntYear').value = year;
+        renderEmployees();
+        renderLeaves();
+        buildReportCard();
+      });
+    });
+    updateYearTabsNav();
+  }
+  function updateYearTabsNav(){
+    $$('.year-tab-nav').forEach(btn=>{
+      if(Number(btn.dataset.year)===state.year){
+        btn.classList.add('active');
+      }else{
+        btn.classList.remove('active');
+      }
+    });
+  }
+
   // Employees UI
   function renderEmployees(){
     const tbody = $('#employeesTable tbody');
     const q = ($('#employeeSearch').value||'').toLowerCase();
-    const rows = DB.employees
+    
+    // If an employee is selected, show only that employee
+    const employees = state.selectedEmployee 
+      ? DB.employees.filter(e => e.id === state.selectedEmployee)
+      : DB.employees;
+    const rows = employees
       .filter(e => `${e.name} ${e.jobTitle||''} ${e.department||''} ${e.email||''}`.toLowerCase().includes(q))
       .map(emp =>{
         const totals = annualTotalsFor(emp.id, state.year);
         const tr = document.createElement('tr');
+        const carryFwdBtn = getCarryForwardBalance(emp.id, state.year) > 0 ? `<button class="ghost" data-act="carry" data-id="${emp.id}" title="Carry forward ${getCarryForwardBalance(emp.id, state.year)} days to ${state.year+1}">Carry Fwd</button>` : '';
         tr.innerHTML = `
           <td>${emp.name||''}</td>
           <td>${emp.email||''}</td>
@@ -189,6 +376,7 @@
           <td class="actions">
             <button class="ghost" data-act="edit" data-id="${emp.id}">Edit</button>
             <button class="danger" data-act="del" data-id="${emp.id}">Delete</button>
+            ${carryFwdBtn}
           </td>`;
         return tr;
       });
@@ -272,15 +460,46 @@
           await refreshFromServer();
         }
       }
+      if(act==='carry'){
+        try{
+          const emp = getEmployee(id);
+          const carryAmount = getCarryForwardBalance(id, state.year);
+          if(carryAmount<=0){ alert('No balance to carry forward.'); return; }
+          if(confirm(`Carry forward ${carryAmount} days from ${state.year} to ${state.year+1}?`)){
+            const nextYear = state.year + 1;
+            const ent = getEntitlement(emp, nextYear);
+            setEntitlement(emp, nextYear, (ent.carry||0)+carryAmount, ent.current||0);
+            saveDB(DB);
+            await apiSaveEmployee(emp, { carry:(ent.carry||0)+carryAmount, current:ent.current||0, year:nextYear });
+            alert(`Carried forward ${carryAmount} days to ${nextYear}.`);
+            renderEmployees();
+          }
+        }catch(err){
+          console.error('Carry forward error:', err);
+          alert('Error: ' + err?.message);
+        }
+      }
     });
     $('#employeeSearch').addEventListener('input', renderEmployees);
   }
   function renderEmployeeOptions(){
     const opts = DB.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     ['leaveEmployee','filterEmployee','reportEmployee'].forEach(id=>{
-      const el = $('#'+id);
+      const el = $('#'+id); if(!el) return;
+      const previous = el.value; // remember current selection
       const keep = id==='filterEmployee';
       el.innerHTML = keep ? `<option value="">All Employees</option>${opts}` : opts;
+      // Restore previous selection if still available; otherwise use sensible default
+      const hasPrev = previous==='' || DB.employees.some(e=>e.id===previous);
+      if(hasPrev) {
+        el.value = previous;
+      } else if(keep) {
+        el.value = '';
+      } else if(DB.employees.length){
+        el.value = DB.employees[0].id;
+      } else {
+        el.value = '';
+      }
     });
   }
 
@@ -299,24 +518,34 @@
 
     $('#leaveForm').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const id = $('#leaveId').value || nid();
-      const isNew = !DB.leaves.some(x=>x.id===id);
-      const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
-      entry.employeeId = $('#leaveEmployee').value;
-      if(!entry.employeeId){ alert('Please select an employee'); return; }
-      entry.type = $('#leaveType').value;
-      entry.status = entry.status || 'PENDING';
-      entry.applied = $('#leaveApplied').value || today();
-      entry.from = $('#leaveFrom').value;
-      entry.to = $('#leaveTo').value;
-      entry.days = Number($('#leaveDays').value) || workingDays(entry.from, entry.to);
-      entry.reason = $('#leaveReason').value.trim();
-      if(isNew) DB.leaves.push(entry);
-      saveDB(DB);
-      await apiSaveLeave(entry);
-      await refreshFromServer();
-      $('#leaveForm').reset(); $('#leaveId').value='';
-      alert('Leave saved.');
+      const submitBtn = $('#leaveForm button[type="submit"]');
+      const origText = submitBtn ? submitBtn.textContent : '';
+      try{
+        if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
+        const id = $('#leaveId').value || nid();
+        const isNew = !DB.leaves.some(x=>x.id===id);
+        const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
+        entry.employeeId = $('#leaveEmployee').value;
+        if(!entry.employeeId){ alert('Please select an employee'); return; }
+        entry.type = $('#leaveType').value;
+        entry.status = entry.status || 'PENDING';
+        entry.applied = $('#leaveApplied').value || today();
+        entry.from = $('#leaveFrom').value;
+        entry.to = $('#leaveTo').value;
+        entry.days = Number($('#leaveDays').value) || workingDays(entry.from, entry.to);
+        entry.reason = $('#leaveReason').value.trim();
+        if(isNew) DB.leaves.push(entry);
+        saveDB(DB);
+        await apiSaveLeave(entry);
+        await refreshFromServer();
+        $('#leaveForm').reset(); $('#leaveId').value='';
+        alert('Leave submitted.');
+      }catch(err){
+        console.error('Leave submit error:', err);
+        alert('Error submitting leave: ' + (err?.message || 'Unknown error'));
+      }finally{
+        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = origText || 'Submit Leave'; }
+      }
     });
 
     $('#leaveCancelBtn').addEventListener('click', ()=>{
@@ -384,13 +613,22 @@
         }
       }
       if(act==='approve' || act==='reject'){
-        const l = DB.leaves.find(x=>x.id===id); if(!l) return;
-        const user = getCurrentUser();
-        if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
-        l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
-        l.approvedBy = user.name||'Manager';
-        l.approvedAt = today();
-        saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+        try{
+          console.log('Approve/Reject action triggered:', act);
+          const l = DB.leaves.find(x=>x.id===id); if(!l) { console.error('Leave not found:', id); return; }
+          const user = getCurrentUser();
+          console.log('Current user:', user);
+          if(!['MANAGER','HR'].includes(user.role)) { alert('Only Manager/HR can approve or reject.'); return; }
+          l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
+          l.approvedBy = user.name||'Manager';
+          l.approvedAt = today();
+          console.log('Updating leave status to:', l.status);
+          saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+          alert(`Leave ${act}ed successfully.`);
+        }catch(err){
+          console.error('Approve/Reject error:', err);
+          alert(`Error ${act}ing leave: ${err?.message || 'Unknown error'}`);
+        }
       }
     });
     $('#filterEmployee').addEventListener('change', renderLeaves);
@@ -415,18 +653,20 @@
       .sort((a,b)=> a.from.localeCompare(b.from));
 
     let runningBalance = (ent.carry||0)+(ent.current||0);
-    const annualRows = annual.map(l =>{
-      const daysInYear = workingDaysInYear(l.from,l.to,year);
-      runningBalance -= daysInYear;
-      return `<tr>
-        <td>${l.applied||''}</td>
-        <td>${l.from}</td>
-        <td>${l.to}</td>
-        <td>${daysInYear}</td>
-        <td>${Math.max(runningBalance,0)}</td>
-        <td>${l.reason||''}</td>
-      </tr>`;
-    }).join('');
+    const annualRows = annual
+      .filter(l => l.status==='APPROVED' || l.status===undefined)
+      .map(l =>{
+        const daysInYear = workingDaysInYear(l.from,l.to,year);
+        runningBalance -= daysInYear;
+        return `<tr>
+          <td>${l.applied||''}</td>
+          <td>${l.from}</td>
+          <td>${l.to}</td>
+          <td>${daysInYear}</td>
+          <td>${Math.max(runningBalance,0)}</td>
+          <td>${l.reason||''}</td>
+        </tr>`;
+      }).join('');
 
     const sl = totalsByType(empId, year, 'SL');
     const hl = totalsByType(empId, year, 'HL');
@@ -506,12 +746,164 @@
     });
   }
 
+  // Calendar
+  let calendarState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+  function renderCalendar() {
+    const calContainer = $('#calendarContainer');
+    if (!calContainer) return; // Element doesn't exist yet
+    
+    const year = calendarState.year;
+    const month = calendarState.month;
+    const today = new Date();
+    const isToday = (d) => d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Update header
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const headerEl = $('#calCurrentMonth');
+    if (headerEl) headerEl.textContent = `${monthNames[month]} ${year}`;
+    
+    // Filter by selected employee
+    const selectedEmpId = $('#calEmployeeFilter')?.value;
+    let filteredLeaves = DB.leaves || [];
+    if (selectedEmpId) {
+      filteredLeaves = filteredLeaves.filter(l => l.employeeId === selectedEmpId);
+    }
+    
+    // Build calendar table
+    let html = '<table class="calendar"><thead><tr>';
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(d => html += `<th>${d}</th>`);
+    html += '</tr></thead><tbody><tr>';
+    
+    // Empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      html += '<td class="other-month"></td>';
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cellDate = new Date(year, month, day);
+      const dateStr = cellDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const isTodayCell = isToday(cellDate);
+      
+      // Get leaves for this day
+      const leavesOnDay = filteredLeaves.filter(l => {
+        if (!l.from || !l.to) return false;
+        if (l.status !== 'APPROVED' && l.status !== undefined) return false; // Only show approved
+        return dateStr >= l.from && dateStr <= l.to;
+      });
+      
+      // Group leaves by employee
+      const leavesByEmp = {};
+      leavesOnDay.forEach(l => {
+        if (!leavesByEmp[l.employeeId]) leavesByEmp[l.employeeId] = [];
+        leavesByEmp[l.employeeId].push(l);
+      });
+      
+      const dayClass = isTodayCell ? 'today' : '';
+      html += `<td class="${dayClass}">
+        <div class="cal-day-number">${day}</div>
+        <div class="cal-leaves">`;
+      
+      Object.entries(leavesByEmp).forEach(([empId, leaves]) => {
+        const emp = DB.employees?.find(e => e.id === empId);
+        leaves.forEach(l => {
+          const status = l.status || 'PENDING';
+          html += `<div class="cal-leave-item ${l.type} ${status}" title="${emp?.name} - ${l.type} (${status})">${emp?.name}</div>`;
+        });
+      });
+      
+      html += '</div></td>';
+      
+      // New row every 7 days
+      if ((day + startingDayOfWeek) % 7 === 0 && day < daysInMonth) {
+        html += '</tr><tr>';
+      }
+    }
+    
+    // Fill remaining cells
+    const totalCells = startingDayOfWeek + daysInMonth;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+      html += '<td class="other-month"></td>';
+    }
+    
+    html += '</tr></tbody></table>';
+    calContainer.innerHTML = html;
+  }
+
+  function updateCalendarEmployeeFilter() {
+    try {
+      const select = $('#calEmployeeFilter');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">All Employees</option>';
+      if (Array.isArray(DB.employees)) {
+        DB.employees.forEach(e => {
+          select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+        });
+      }
+      select.value = currentVal;
+    } catch (e) {
+      console.warn('updateCalendarEmployeeFilter error:', e);
+    }
+  }
+
+  function bindCalendar() {
+    try {
+      if (!$('#calendarContainer')) return; // Calendar section doesn't exist
+      
+      updateCalendarEmployeeFilter();
+      renderCalendar();
+      
+      const prevBtn = $('#calPrevMonth');
+      const nextBtn = $('#calNextMonth');
+      const filterSelect = $('#calEmployeeFilter');
+      
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          calendarState.month--;
+          if (calendarState.month < 0) {
+            calendarState.month = 11;
+            calendarState.year--;
+          }
+          renderCalendar();
+        });
+      }
+      
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          calendarState.month++;
+          if (calendarState.month > 11) {
+            calendarState.month = 0;
+            calendarState.year++;
+          }
+          renderCalendar();
+        });
+      }
+      
+      if (filterSelect) {
+        filterSelect.addEventListener('change', renderCalendar);
+      }
+    } catch (e) {
+      console.warn('bindCalendar error:', e);
+    }
+  }
+
   // Year controls
   function bindYear(){
     const y = $('#yearInput');
     y.value = state.year;
     y.addEventListener('change', ()=>{
       state.year = Number(y.value)||new Date().getFullYear();
+      updateYearTabs();
       $('#reportYear').value = state.year;
       $('#empEntYear').value = state.year;
       renderEmployees(); renderLeaves(); buildReportCard();
@@ -520,6 +912,28 @@
     $('#reportYear').addEventListener('change', ()=> buildReportCard());
     $('#reportEmployee').addEventListener('change', ()=> buildReportCard());
     $('#refreshReport').addEventListener('click', ()=> buildReportCard());
+    
+    // Year tabs
+    $$('.year-tab').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        state.year = Number(tab.dataset.year);
+        y.value = state.year;
+        updateYearTabs();
+        $('#reportYear').value = state.year;
+        $('#empEntYear').value = state.year;
+        renderEmployees(); renderLeaves(); buildReportCard();
+      });
+    });
+    updateYearTabs();
+  }
+  function updateYearTabs(){
+    $$('.year-tab').forEach(tab=>{
+      if(Number(tab.dataset.year)===state.year){
+        tab.classList.add('active');
+      }else{
+        tab.classList.remove('active');
+      }
+    });
   }
 
   // User & holidays
@@ -575,6 +989,87 @@
     });
   }
   
+  function bindMaintenanceButtons(){
+    const resetBtn = $('#resetCarryForwardBtn');
+    if(resetBtn){
+      resetBtn.addEventListener('click', async ()=>{
+        if(confirm('This will reset all carry-forward values to correct amounts (max 5 days per year). Continue?')){
+          await resetCarryForward();
+        }
+      });
+    }
+  }
+
+  // Audit trail functions
+  async function getAuditLogs(limit = 100, offset = 0) {
+    try {
+      const res = await fetch(`/api/audit-log?limit=${limit}&offset=${offset}`);
+      if (!res.ok) throw new Error('Failed to load audit logs');
+      const data = await res.json();
+      return data.logs || [];
+    } catch (e) {
+      console.error('getAuditLogs error:', e);
+      return [];
+    }
+  }
+
+  async function renderAuditLogs() {
+    try {
+      const logs = await getAuditLogs(200, 0);
+      const actionFilter = $('#auditActionFilter')?.value || '';
+      const entityFilter = $('#auditEntityFilter')?.value || '';
+      
+      let filtered = logs;
+      if (actionFilter) {
+        filtered = filtered.filter(l => l.action === actionFilter);
+      }
+      if (entityFilter) {
+        filtered = filtered.filter(l => l.entityType === entityFilter);
+      }
+      
+      const tbody = $('#auditLogsTable tbody');
+      if (!tbody) return;
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No audit logs found.</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map(log => {
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const userDisplay = log.userEmail || log.userId || 'System';
+        const details = log.details || '';
+        const entityDisplay = `${log.entityType}: ${log.entityName || log.entityId}`;
+        return `<tr>
+          <td style="font-size: 0.9em;">${timestamp}</td>
+          <td>${userDisplay}</td>
+          <td><strong>${log.action}</strong></td>
+          <td>${entityDisplay}</td>
+          <td>${details}</td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      console.error('renderAuditLogs error:', e);
+      alert('Failed to load audit trail');
+    }
+  }
+
+  function bindAuditTrail() {
+    const loadBtn = $('#loadAuditLogsBtn');
+    const actionFilter = $('#auditActionFilter');
+    const entityFilter = $('#auditEntityFilter');
+    
+    if (loadBtn) {
+      loadBtn.addEventListener('click', renderAuditLogs);
+    }
+    if (actionFilter) {
+      actionFilter.addEventListener('change', renderAuditLogs);
+    }
+    if (entityFilter) {
+      entityFilter.addEventListener('change', renderAuditLogs);
+    }
+  }
+
   // User management
   async function renderUsers(){
     try{
@@ -613,19 +1108,86 @@
       if(!DB.holidays.includes(d)) DB.holidays.push(d);
       saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
+    $('#showCountriesBtn').addEventListener('click', async ()=>{
+      const container = $('#countriesListContainer');
+      const list = $('#countriesList');
+      if(container.style.display === 'none'){
+        try{
+          const r = await fetch('https://date.nager.at/api/v3/AvailableCountries');
+          if(r.ok){
+            const countries = await r.json();
+            const codes = countries.map(c => `${c.countryCode} (${c.name})`).sort();
+            list.innerHTML = codes.join(' • ') + '<br/><small style="color: #999;">Note: Some countries may not have data for all years.</small>';
+          }else{
+            list.innerHTML = 'Common codes: SG (Singapore) • US (United States) • GB (United Kingdom) • AU (Australia) • DE (Germany) • FR (France) • IT (Italy) • JP (Japan)';
+          }
+          container.style.display = 'block';
+        }catch(e){
+          console.error('Could not fetch countries list:', e);
+          list.innerHTML = 'Common codes: SG • US • GB • AU • DE • FR • IT • JP • CN • IN • MX • BR';
+          container.style.display = 'block';
+        }
+      }else{
+        container.style.display = 'none';
+      }
+    });
     $('#fetchHolidays').addEventListener('click', async ()=>{
-      const year = Number($('#holYear').value)||state.year; const cc = ($('#holCountry').value||'').toUpperCase();
+      const year = Number($('#holYear').value)||state.year; 
+      const cc = ($('#holCountry').value||'').toUpperCase().trim();
       if(!cc){ alert('Enter 2-letter country code, e.g., SG'); return; }
+      if(cc.length !== 2){
+        alert('Country code must be exactly 2 letters (e.g., SG, US, MY)');
+        return;
+      }
+      
       try{
-        const r = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`);
-        if(!r.ok) throw new Error('Failed');
-        const list = await r.json();
+        console.log(`Attempting to fetch holidays for ${cc} in ${year}...`);
+        const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`;
+        console.log(`API URL: ${url}`);
+        
+        const r = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        console.log(`Response status: ${r.status}, Content-Length: ${r.headers.get('content-length')}`);
+        
+        // Handle 204 No Content (API found nothing or country not supported)
+        if(r.status === 204){
+          alert(`Country code "${cc}" returned no data for ${year}.\n\nThis could mean:\n- The country code is not supported by the API\n- No holiday data is available for that year\n\nTry these verified codes:\n- SG (Singapore)\n- US (United States)\n- GB (United Kingdom)\n- AU (Australia)\n- DE (Germany)\n\nOr manually add holidays using the "Add Date" field below.`);
+          return;
+        }
+        
+        if(r.status === 404){
+          alert(`Country code "${cc}" not found in the API.\n\nCommon valid codes:\n- SG, US, GB, AU, DE, FR, IT, JP, CN, IN\n\nSee https://date.nager.at/api/v3/AvailableCountries for full list.`);
+          return;
+        }
+        
+        if(!r.ok) {
+          const errorText = await r.text();
+          console.error(`API error: ${r.status} - ${errorText}`);
+          throw new Error(`API returned status ${r.status}: ${errorText || 'Unknown error'}`);
+        }
+        
+        const text = await r.text();
+        if(!text) throw new Error('Empty response from API');
+        
+        const list = JSON.parse(text);
+        if(!Array.isArray(list)) throw new Error('Invalid API response format');
+        console.log(`Fetched ${list.length} holidays`);
+        
         const dates = list.map(x=>x.date); // ISO YYYY-MM-DD
         const set = new Set(DB.holidays||[]);
         dates.forEach(d=>set.add(d));
         DB.holidays = Array.from(set).sort();
-        saveDB(DB); await apiSetHolidays(DB.holidays); await refreshFromServer();
-      }catch(err){ alert('Could not fetch holidays. Check the country code or try later.'); }
+        saveDB(DB); 
+        await apiSetHolidays(DB.holidays); 
+        await refreshFromServer();
+        alert(`✓ Successfully added ${dates.length} holidays for ${cc} ${year}`);
+      }catch(err){
+        console.error('Holiday fetch error:', err);
+        alert(`Error fetching holidays:\n${err.message}\n\nAlternatively, use the "Add Date" field to manually add holidays one by one.`);
+      }
     });
     $('#holidaysTable').addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
@@ -650,28 +1212,60 @@
   }
 
   function renderAll(){
+    renderEmployeeTabs();
     renderEmployeeOptions();
     renderEmployees();
     renderLeaves();
     buildReportCard();
+    try{
+      updateCalendarEmployeeFilter();
+      renderCalendar();
+    }catch(e){
+      console.warn('Calendar render failed (non-critical):', e);
+    }
   }
 
   async function init(){
     bindTabs();
+    bindYearTabs();
     bindYear();
     bindEmployeeForm();
     bindLeaveForm();
     bindLeavesTable();
     bindImportExport();
     bindPrint();
-    bindCloudSync();
     bindUser();
     bindHolidays();
+    bindMaintenanceButtons();
+    bindAuditTrail();
+    try{
+      bindCalendar();
+    }catch(e){
+      console.warn('Calendar binding failed (non-critical):', e);
+    }
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
+    
+    // Sync fresh data from server before calculating carry-forward
+    try{
+      await refreshFromServer();
+    }catch(e){
+      console.error('Initial sync failed:', e);
+    }
+    
     renderAll();
     renderHolidays();
+    
+    // Now bind cloud sync AFTER data is loaded
+    bindCloudSync();
     initRealtime();
+    
+    // Auto-carry forward on app load if we're viewing 2024 or later
+    // This must run AFTER refreshFromServer so we have latest leave data
+    if(state.year >= 2024){
+      await autoCarryForward();
+      renderEmployees(); // Re-render to show updated carry-forward values
+    }
   }
 
   // Kickoff

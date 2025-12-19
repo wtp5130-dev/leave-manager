@@ -54,6 +54,13 @@ export async function ensureSchema() {
     updated_at TIMESTAMPTZ DEFAULT now()
   )`;
 
+  // Add missing created_by column if it doesn't exist
+  try {
+    await sql`ALTER TABLE leaves ADD COLUMN created_by TEXT`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   await sql`CREATE TABLE IF NOT EXISTS holidays (
     date TEXT PRIMARY KEY
   )`;
@@ -72,6 +79,21 @@ export async function ensureSchema() {
     role TEXT DEFAULT 'EMPLOYEE',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
+  )`;
+
+  await sql`CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT now(),
+    user_id TEXT,
+    user_email TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT,
+    entity_name TEXT,
+    old_value TEXT,
+    new_value TEXT,
+    details TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
   )`;
 }
 
@@ -117,4 +139,27 @@ export async function getAllData() {
 
 export async function touchChange() {
   await sql`UPDATE meta SET last_change = now() WHERE id = 1`;
+}
+
+export async function getAuditLogs(limit = 100, offset = 0) {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT id, timestamp, user_id, user_email, action, entity_type, entity_id, entity_name, old_value, new_value, details
+    FROM audit_logs
+    ORDER BY timestamp DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+  return rows.map(r => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    userId: r.user_id,
+    userEmail: r.user_email,
+    action: r.action,
+    entityType: r.entity_type,
+    entityId: r.entity_id,
+    entityName: r.entity_name,
+    oldValue: r.old_value,
+    newValue: r.new_value,
+    details: r.details
+  }));
 }

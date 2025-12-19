@@ -28,6 +28,28 @@ body{
 .header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;flex:1}
 .year-picker{display:flex;gap:6px;align-items:center;color:var(--muted)}
 .year-picker input{width:86px}
+.year-selector{display:flex;gap:12px;align-items:center}
+.year-tabs{display:flex;gap:4px}
+.year-tab{
+  padding:6px 12px;
+  border:1px solid #334155;
+  background:transparent;
+  color:var(--muted);
+  border-radius:6px;
+  cursor:pointer;
+  font-size:0.875rem;
+  font-weight:500;
+  transition:all 0.2s;
+}
+.year-tab:hover{
+  border-color:var(--primary);
+  color:var(--text);
+}
+.year-tab.active{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:white;
+}
 .auth-box{display:flex;gap:8px;align-items:center;margin-right:8px}
 .auth-box .user{color:var(--muted);font-size:12px}
 .button, button{
@@ -49,6 +71,16 @@ button.danger:hover{background:#dc2626}
 .tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937}
 .tab{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 12px;color:var(--muted)}
 .tab.active{color:var(--text);background:#0b1220}
+
+.year-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:#0a0e14}
+.year-tab-nav{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;color:var(--muted);font-weight:600;cursor:pointer;transition:all 0.2s}
+.year-tab-nav:hover{border-color:var(--primary);color:var(--text)}
+.year-tab-nav.active{background:var(--primary);color:white;border-color:var(--primary)}
+
+.employee-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:#0a0e14;overflow-x:auto}
+.employee-tab-nav{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;color:var(--muted);font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.employee-tab-nav:hover{border-color:var(--primary);color:var(--text)}
+.employee-tab-nav.active{background:var(--primary);color:white;border-color:var(--primary)}
 
 main{padding:16px;display:grid;gap:16px}
 .panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
@@ -101,6 +133,117 @@ textarea{resize:vertical}
 .card table thead tr th:nth-child(4){ width:12%; }
 .card table thead tr th:nth-child(5){ width:12%; }
 .card table thead tr th:nth-child(6){ width:37%; }
+
+/* Calendar Styles */
+#calendarContainer {
+  overflow-x: auto;
+}
+
+.calendar {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #334155;
+  background: #0f172a;
+  font-size: 0.85rem;
+}
+
+.calendar thead {
+  background: #1e293b;
+  border-bottom: 2px solid #334155;
+}
+
+.calendar th {
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar td {
+  padding: 0;
+  border: 1px solid #334155;
+  height: 120px;
+  vertical-align: top;
+  background: #0b1220;
+  position: relative;
+}
+
+.calendar td.other-month {
+  background: #050a10;
+  opacity: 0.5;
+}
+
+.calendar td.today {
+  background: #1e3a5f;
+  border: 2px solid #4f46e5;
+}
+
+.cal-day-number {
+  padding: 4px 8px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.cal-day-number.other-month {
+  color: #475569;
+}
+
+.cal-leaves {
+  padding: 4px 8px;
+  overflow-y: auto;
+  max-height: 95px;
+}
+
+.cal-leave-item {
+  padding: 3px 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid;
+}
+
+.cal-leave-item.ANNUAL {
+  background: #1e3a5f;
+  border-left-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.cal-leave-item.SICK {
+  background: #3f2f1e;
+  border-left-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.cal-leave-item.UNPAID {
+  background: #2f3f2f;
+  border-left-color: #6b7280;
+  color: #d1d5db;
+}
+
+.cal-leave-item.EMERGENCY {
+  background: #3f1f2f;
+  border-left-color: #ef4444;
+  color: #fca5a5;
+}
+
+.cal-leave-item.PENDING {
+  opacity: 0.6;
+}
+
+.cal-leave-item.APPROVED {
+  opacity: 1;
+}
+
+.cal-leave-item.REJECTED {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
 
 .print-only{display:none}
 @media print{

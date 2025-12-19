@@ -1,6 +1,7 @@
 import { sql } from '@vercel/postgres';
 import { ensureSchema, touchChange } from './db.js';
 import { broadcastChange } from './realtime.js';
+import { logAudit } from './audit-log.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -9,16 +10,21 @@ export default async function handler(req, res) {
     await ensureSchema();
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const { requireAuth } = await import('./auth-helpers.js');
-    const authed = requireAuth(req, res, ['HR','MANAGER']); if(!authed) return;
+    const user = requireAuth(req, res, ['HR','MANAGER']); if(!user) return;
     const { id, name, jobTitle, department, dateJoined, email, role, entitlement } = req.body || {};
     if (!id || !name) return res.status(400).json({ ok: false, error: 'id and name required' });
 
+    let isNewEmployee = true;
+    let oldEmployee = null;
+
     try {
       // Try to check if employee exists
-      const existing = await sql`SELECT id FROM employees WHERE id = ${id}`;
+      const existing = await sql`SELECT * FROM employees WHERE id = ${id}`;
       
       if (existing.rows.length > 0) {
         // Update existing
+        oldEmployee = existing.rows[0];
+        isNewEmployee = false;
         await sql`UPDATE employees 
                   SET name = ${name}, 
                       job_title = ${jobTitle||null}, 
@@ -40,7 +46,7 @@ export default async function handler(req, res) {
 
     if (entitlement && entitlement.year) {
       try {
-        const existing = await sql`SELECT employee_id FROM entitlements WHERE employee_id = ${id} AND year = ${entitlement.year}`;
+        const existing = await sql`SELECT * FROM entitlements WHERE employee_id = ${id} AND year = ${entitlement.year}`;
         if (existing.rows.length > 0) {
           await sql`UPDATE entitlements SET carry = ${entitlement.carry||0}, current = ${entitlement.current||0} WHERE employee_id = ${id} AND year = ${entitlement.year}`;
         } else {
@@ -51,6 +57,10 @@ export default async function handler(req, res) {
         throw e;
       }
     }
+
+    // Log audit trail
+    const action = isNewEmployee ? 'CREATE' : 'UPDATE';
+    await logAudit(user.id, user.email, action, 'EMPLOYEE', id, name, oldEmployee ? { name: oldEmployee.name, role: oldEmployee.role } : null, { name, role: role || 'EMPLOYEE' }, `Employee ${action.toLowerCase()}d`);
 
     await touchChange();
     await broadcastChange({ scope: 'employee' });
