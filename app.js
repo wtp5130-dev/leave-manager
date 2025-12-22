@@ -41,7 +41,27 @@
   };
 
   let DB = loadDB();
-  let state = { year: new Date().getFullYear(), autoCarryDone: false, selectedEmployee: null };
+  
+  // Load state from localStorage (year, selectedEmployee)
+  const STATE_KEY = 'leaveManager.state';
+  const loadState = () => {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return { year: new Date().getFullYear(), autoCarryDone: false, selectedEmployee: null };
+      return JSON.parse(raw);
+    } catch(e) {
+      return { year: new Date().getFullYear(), autoCarryDone: false, selectedEmployee: null };
+    }
+  };
+  const saveState = () => {
+    try {
+      localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    } catch(e) {
+      console.error('saveState error:', e);
+    }
+  };
+  
+  let state = loadState();
 
   // Database API helpers
   async function apiGetAll(){
@@ -505,6 +525,7 @@
     $$('.employee-tab-nav').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         state.selectedEmployee = btn.dataset.empId;
+        saveState();
         renderEmployeeTabs(); // Update active state
         renderEmployees(); // Show this employee's data
         renderLeaves(); // Show this employee's leaves
@@ -519,6 +540,7 @@
     // Auto-select first employee if none selected
     if(!state.selectedEmployee && list.length > 0){
       state.selectedEmployee = list[0].id;
+      saveState();
       renderEmployeeTabs();
     }
   }
@@ -554,6 +576,7 @@
       btn.addEventListener('click', async ()=>{
         const year = Number(btn.dataset.year);
         state.year = year;
+        saveState();
         const yi = $('#yearInput'); if(yi) yi.value = year;
         
         // Update year tab active state
@@ -1708,6 +1731,11 @@
     
     renderAll();
     renderHolidays();
+    
+    // Update UI to reflect saved state (year and employee selection)
+    updateYearTabsNav();
+    const yi = $('#yearInput'); if(yi) yi.value = state.year;
+    const reportYear = $('#reportYear'); if(reportYear) reportYear.value = state.year;
     
     // Now bind cloud sync AFTER data is loaded
     bindCloudSync();
