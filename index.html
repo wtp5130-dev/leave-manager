@@ -263,19 +263,9 @@
               <option value="2030">2030</option>
             </select>
           </label>
-          <label>Country Code<input id="holCountry" placeholder="e.g., SG, US, GB" maxlength="2" /></label>
-          <button id="fetchHolidays" class="ghost">Fetch Public Holidays</button>
-          <button id="loadMY2026" class="ghost" title="Load Malaysia 2026 (National + Selangor)">Load MY 2026 (National + Selangor)</button>
-          <button id="loadMY2025" class="ghost" title="Load Malaysia 2025 (National + Selangor)">Load MY 2025 (National + Selangor)</button>
-          <button id="loadMY2027" class="ghost" title="Load Malaysia 2027 (National + Selangor)">Load MY 2027 (National + Selangor)</button>
-          <button id="holClearBtn" class="danger" title="Remove ALL holidays from all years">Clear All Holidays</button>
-          <button id="showCountriesBtn" class="ghost" title="Show list of supported countries">Show Available Countries</button>
           <label>Add Date<input id="holAddDate" type="date" /></label>
           <button id="holAddBtn" class="ghost">Add</button>
-        </div>
-        <div id="countriesListContainer" style="display:none; margin-top: 1rem;">
-          <p><strong>Supported countries (updated Nov 2024):</strong></p>
-          <p id="countriesList" style="font-size: 0.9em; line-height: 1.6;"></p>
+          <button id="holClearBtn" class="danger" title="Remove ALL holidays from all years">Clear All Holidays</button>
         </div>
         <div class="table-wrap">
           <table class="table" id="holidaysTable">
