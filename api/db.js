@@ -62,8 +62,16 @@ export async function ensureSchema() {
   }
 
   await sql`CREATE TABLE IF NOT EXISTS holidays (
-    date TEXT PRIMARY KEY
+    date TEXT PRIMARY KEY,
+    name TEXT DEFAULT ''
   )`;
+
+  // Add missing name column if it doesn't exist
+  try {
+    await sql`ALTER TABLE holidays ADD COLUMN name TEXT DEFAULT ''`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   await sql`CREATE TABLE IF NOT EXISTS meta (
     id INT PRIMARY KEY DEFAULT 1,
@@ -133,7 +141,7 @@ export async function getAllData() {
     approvedAt: l.approved_at,
     createdBy: l.created_by
   }));
-  const holidays = holRows.map(h => h.date);
+  const holidays = holRows.map(h => ({ date: h.date, name: h.name || '' }));
   return { employees, leaves, holidays };
 }
 

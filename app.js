@@ -87,10 +87,17 @@
     return r.json().catch(()=>({ ok:true }));
   }
   async function apiDeleteLeave(id){ const r = await fetch(`/api/leave-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Leave delete failed'); }
-  async function apiSetHolidays(dates){
-    const onlyDates = (dates||[]).map(d => typeof d === 'string' ? d : d?.date).filter(Boolean);
+  async function apiSetHolidays(holidays){
+    // Convert to format with date and name
+    const holidayObjects = (holidays||[]).map(h => {
+      if (typeof h === 'string') {
+        return { date: h, name: '' };
+      }
+      return { date: h.date, name: h.name || '' };
+    }).filter(h => h.date);
+    
     const r = await fetch('/api/holidays-set', {
-      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ dates: onlyDates })
+      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ holidays: holidayObjects })
     });
     if(!r.ok){
       let msg = 'Holidays set failed';
