@@ -206,6 +206,20 @@ textarea{resize:vertical}
   overflow-y: auto;
 }
 
+.cal-holiday {
+  padding: 3px 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #2d5f2f;
+  border-left: 3px solid #22c55e;
+  color: #86efac;
+  font-weight: 500;
+}
+
 .cal-leave-item {
   padding: 3px 6px;
   margin: 2px 0;
@@ -252,6 +266,10 @@ textarea{resize:vertical}
 .cal-leave-item.REJECTED {
   opacity: 0.4;
   text-decoration: line-through;
+}
+
+.calendar td.holiday {
+  background-color: rgba(34, 197, 94, 0.1);
 }
 
 /* Report form alignment (Leaves apply form) */

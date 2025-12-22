@@ -1116,6 +1116,10 @@
       const dateStr = cellDate.toISOString().split('T')[0]; // YYYY-MM-DD
       const isTodayCell = isToday(cellDate);
       
+      // Check if this day is a holiday
+      const holidayOnDay = (DB.holidays || []).find(h => (typeof h === 'string' ? h : h.date) === dateStr);
+      const holidayName = holidayOnDay ? (typeof holidayOnDay === 'string' ? '' : holidayOnDay.name) : '';
+      
       // Get leaves for this day
       const leavesOnDay = filteredLeaves.filter(l => {
         if (!l.from || !l.to) return false;
@@ -1130,10 +1134,15 @@
         leavesByEmp[l.employeeId].push(l);
       });
       
-      const dayClass = isTodayCell ? 'today' : '';
+      const dayClass = isTodayCell ? 'today' : (holidayOnDay ? 'holiday' : '');
       html += `<td class="${dayClass}">
         <div class="cal-day-number">${day}</div>
         <div class="cal-leaves">`;
+      
+      // Display holiday if exists
+      if (holidayOnDay) {
+        html += `<div class="cal-holiday" title="Holiday: ${holidayName}">🏖 ${holidayName || 'Holiday'}</div>`;
+      }
       
       Object.entries(leavesByEmp).forEach(([empId, leaves]) => {
         const emp = DB.employees?.find(e => e.id === empId);
@@ -1478,7 +1487,9 @@
       if(btn.dataset.act==='del-hol'){
         const d = btn.dataset.date;
         DB.holidays = (DB.holidays||[]).filter(x=> (typeof x==='string'? x : x.date) !== d);
-        saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
+        saveDB(DB);
+        renderHolidays();
+        apiSetHolidays(DB.holidays).then(refreshFromServer);
       }
     });
   }
