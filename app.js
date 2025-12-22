@@ -1447,9 +1447,14 @@
     $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; const yi=$('#yearInput'); if(yi) yi.value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
     $('#holAddBtn').addEventListener('click', ()=>{
       const d = $('#holAddDate').value; if(!d) return;
+      const name = ($('#holAddName').value || '').trim();
       const exists = (DB.holidays||[]).some(x => (typeof x==='string'? x : x.date) === d);
-      if(!exists) DB.holidays.push({ date:d, name:'' });
-      saveDB(DB); apiSetHolidays(DB.holidays).then(refreshFromServer);
+      if(!exists) DB.holidays.push({ date:d, name });
+      saveDB(DB); 
+      $('#holAddDate').value = ''; 
+      $('#holAddName').value = ''; 
+      renderHolidays(); 
+      apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
     const holClear = document.getElementById('holClearBtn');
     if(holClear){
