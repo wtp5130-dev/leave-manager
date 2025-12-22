@@ -1035,8 +1035,12 @@
           l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
           l.approvedBy = user.name||'Manager';
           l.approvedAt = today();
+          console.log('Inbox: updating leave', id, 'to status', l.status);
           saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
-          updateInbox(); buildReportCard(); renderReportLeaves();
+          console.log('Inbox: refresh complete, rendering all views');
+          renderAll();
+          panel.style.display='none';
+          alert(`Leave ${act}d successfully.`);
         }catch(err){ console.error('Inbox action error:', err); alert('Action failed: ' + (err?.message||'Unknown')); }
       });
     }
