@@ -125,10 +125,24 @@
     const fromEl = document.getElementById('reportLeaveFrom');
     const toEl = document.getElementById('reportLeaveTo');
     const daysEl = document.getElementById('reportLeaveDays');
+    const halfDayEl = document.getElementById('reportLeaveHalfDay');
     if(!fromEl || !toEl || !daysEl) return;
     const from = fromEl.value, to = toEl.value;
     if(!from || !to){ daysEl.value = ''; return; }
-    daysEl.value = String(workingDays(from,to));
+    
+    // Check if it's a half day
+    const isHalfDay = halfDayEl && halfDayEl.checked;
+    const isSameDay = from === to;
+    
+    if (isHalfDay && isSameDay) {
+      daysEl.value = '0.5';
+    } else if (isHalfDay && !isSameDay) {
+      // If half day is checked but dates are different, uncheck it
+      if(halfDayEl) halfDayEl.checked = false;
+      daysEl.value = String(workingDays(from,to));
+    } else {
+      daysEl.value = String(workingDays(from,to));
+    }
   }
 
   function renderReportLeaves(){
@@ -144,13 +158,14 @@
       .map(l=>{
         const tr = document.createElement('tr');
         const actionsAllowed = (user?.role==='MANAGER' || user?.role==='HR');
+        const daysDisplay = l.isHalfDay ? `${l.days} (${l.session || 'N/A'})` : (l.days ?? workingDays(l.from,l.to));
         tr.innerHTML = actionsAllowed ? `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
-          <td>${l.days ?? workingDays(l.from,l.to)}</td>
+          <td>${daysDisplay}</td>
           <td>${l.reason||''}</td>
           <td class="actions">
             <button class="ghost" data-act="report-edit" data-id="${l.id}">Edit</button>
@@ -163,7 +178,7 @@
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
-          <td>${l.days ?? workingDays(l.from,l.to)}</td>
+          <td>${daysDisplay}</td>
           <td>${l.reason||''}</td>
           <td></td>`;
         return tr;
@@ -176,9 +191,45 @@
     const from = document.getElementById('reportLeaveFrom');
     const to = document.getElementById('reportLeaveTo');
     const type = document.getElementById('reportLeaveType');
+    const halfDayEl = document.getElementById('reportLeaveHalfDay');
+    const sessionLabel = document.getElementById('reportLeaveSessionLabel');
+    const sessionEl = document.getElementById('reportLeaveSession');
+    
     if(from) from.addEventListener('change', recomputeReportLeaveDays);
     if(to) to.addEventListener('change', recomputeReportLeaveDays);
     if(type) type.addEventListener('change', recomputeReportLeaveDays);
+    
+    // Half-day checkbox logic
+    if(halfDayEl && sessionLabel) {
+      halfDayEl.addEventListener('change', function(){
+        const fromVal = from?.value;
+        const toVal = to?.value;
+        
+        if(this.checked) {
+          // Ensure from and to dates are the same
+          if(fromVal && toVal && fromVal !== toVal) {
+            alert('Half day leave requires the same From and To date.');
+            this.checked = false;
+            return;
+          }
+          if(fromVal && !toVal) {
+            to.value = fromVal;
+          }
+          if(!fromVal && toVal) {
+            from.value = toVal;
+          }
+          sessionLabel.style.display = '';
+          if(sessionEl) sessionEl.required = true;
+        } else {
+          sessionLabel.style.display = 'none';
+          if(sessionEl) {
+            sessionEl.required = false;
+            sessionEl.value = '';
+          }
+        }
+        recomputeReportLeaveDays();
+      });
+    }
 
     const form = document.getElementById('reportLeaveForm');
     if(form){
@@ -196,6 +247,26 @@
           entry.applied = document.getElementById('reportLeaveApplied').value || today();
           entry.from = document.getElementById('reportLeaveFrom').value;
           entry.to = document.getElementById('reportLeaveTo').value;
+          
+          // Handle half-day leave
+          const halfDayEl = document.getElementById('reportLeaveHalfDay');
+          const sessionEl = document.getElementById('reportLeaveSession');
+          entry.isHalfDay = halfDayEl ? halfDayEl.checked : false;
+          entry.session = (entry.isHalfDay && sessionEl) ? sessionEl.value : null;
+          
+          // Validate half-day requirements
+          if(entry.isHalfDay) {
+            if(entry.from !== entry.to) {
+              alert('Half day leave requires the same From and To date.');
+              return;
+            }
+            if(!entry.session) {
+              alert('Please select AM or PM for half-day leave.');
+              sessionEl?.focus();
+              return;
+            }
+          }
+          
           entry.days = Number(document.getElementById('reportLeaveDays').value) || workingDays(entry.from, entry.to);
           entry.reason = (document.getElementById('reportLeaveReason').value||'').trim();
           if(!entry.reason){
@@ -233,6 +304,27 @@
           document.getElementById('reportLeaveTo').value = l.to||'';
           document.getElementById('reportLeaveDays').value = l.days ?? workingDays(l.from,l.to);
           document.getElementById('reportLeaveReason').value = l.reason||'';
+          
+          // Populate half-day fields
+          const halfDayEl = document.getElementById('reportLeaveHalfDay');
+          const sessionEl = document.getElementById('reportLeaveSession');
+          const sessionLabel = document.getElementById('reportLeaveSessionLabel');
+          if(halfDayEl) {
+            halfDayEl.checked = l.isHalfDay || false;
+            if(l.isHalfDay && sessionLabel) {
+              sessionLabel.style.display = '';
+              if(sessionEl) {
+                sessionEl.value = l.session || '';
+                sessionEl.required = true;
+              }
+            } else if(sessionLabel) {
+              sessionLabel.style.display = 'none';
+              if(sessionEl) {
+                sessionEl.value = '';
+                sessionEl.required = false;
+              }
+            }
+          }
         }
         if(act==='report-del'){
           const user = getCurrentUser(); if(user?.role==='EMPLOYEE') return; if(confirm('Delete this leave entry?')){

@@ -61,6 +61,20 @@ export async function ensureSchema() {
     // Column already exists, ignore
   }
 
+  // Add is_half_day column if it doesn't exist
+  try {
+    await sql`ALTER TABLE leaves ADD COLUMN is_half_day BOOLEAN DEFAULT false`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add session column if it doesn't exist
+  try {
+    await sql`ALTER TABLE leaves ADD COLUMN session TEXT`;
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   await sql`CREATE TABLE IF NOT EXISTS holidays (
     date TEXT PRIMARY KEY,
     name TEXT DEFAULT ''
@@ -139,7 +153,9 @@ export async function getAllData() {
     reason: l.reason,
     approvedBy: l.approved_by,
     approvedAt: l.approved_at,
-    createdBy: l.created_by
+    createdBy: l.created_by,
+    isHalfDay: l.is_half_day || false,
+    session: l.session || null
   }));
   const holidays = holRows.map(h => ({ date: h.date, name: h.name || '' }));
   return { employees, leaves, holidays };

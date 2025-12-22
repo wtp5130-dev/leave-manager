@@ -48,9 +48,9 @@ export default async function handler(req, res) {
     if (!l.reason || !String(l.reason).trim()) return res.status(400).json({ ok: false, error: 'reason required' });
     
     console.log('leave.js: inserting/updating leave:', l.id, 'emp:', l.employeeId, 'type:', l.type);
-    await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, created_by, updated_at)
-              VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, ${user.id||null}, now())
-              ON CONFLICT (id) DO UPDATE SET employee_id=excluded.employee_id, type=excluded.type, status=excluded.status, applied=excluded.applied, from_date=excluded.from_date, to_date=excluded.to_date, days=excluded.days, reason=excluded.reason, approved_by=excluded.approved_by, approved_at=excluded.approved_at, updated_at=now()`;
+    await sql`INSERT INTO leaves (id, employee_id, type, status, applied, from_date, to_date, days, reason, approved_by, approved_at, created_by, is_half_day, session, updated_at)
+              VALUES (${l.id}, ${l.employeeId}, ${l.type}, ${l.status||'PENDING'}, ${l.applied||null}, ${l.from||null}, ${l.to||null}, ${l.days||0}, ${l.reason||null}, ${l.approvedBy||null}, ${l.approvedAt||null}, ${user.id||null}, ${l.isHalfDay||false}, ${l.session||null}, now())
+              ON CONFLICT (id) DO UPDATE SET employee_id=excluded.employee_id, type=excluded.type, status=excluded.status, applied=excluded.applied, from_date=excluded.from_date, to_date=excluded.to_date, days=excluded.days, reason=excluded.reason, approved_by=excluded.approved_by, approved_at=excluded.approved_at, is_half_day=excluded.is_half_day, session=excluded.session, updated_at=now()`;
     console.log('leave.js: insert/update succeeded');
     
     // Log audit trail
