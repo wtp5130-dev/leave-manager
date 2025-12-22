@@ -1141,7 +1141,8 @@
       
       // Display holiday if exists
       if (holidayOnDay) {
-        html += `<div class="cal-holiday" title="Holiday: ${holidayName}">🏖 ${holidayName || 'Holiday'}</div>`;
+        const displayName = holidayName && holidayName.trim() ? holidayName : 'Holiday';
+        html += `<div class="cal-holiday" title="${displayName}">🏖 ${displayName}</div>`;
       }
       
       Object.entries(leavesByEmp).forEach(([empId, leaves]) => {
@@ -1453,7 +1454,7 @@
     tbody.innerHTML = items.map(h=>`<tr><td>${h.date}</td><td>${h.name||''}</td><td><button class="danger" data-date="${h.date}" data-act="del-hol">Remove</button></td></tr>`).join('') || '<tr><td colspan="3">No holidays configured.</td></tr>';
   }
   function bindHolidays(){
-    $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; const yi=$('#yearInput'); if(yi) yi.value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); });
+    $('#holYear').addEventListener('change', ()=>{ state.year = Number($('#holYear').value)||state.year; const yi=$('#yearInput'); if(yi) yi.value=state.year; renderHolidays(); renderLeaves(); renderEmployees(); buildReportCard(); renderCalendar(); });
     $('#holAddBtn').addEventListener('click', ()=>{
       const d = $('#holAddDate').value; if(!d) return;
       const name = ($('#holAddName').value || '').trim();
@@ -1462,7 +1463,8 @@
       saveDB(DB); 
       $('#holAddDate').value = ''; 
       $('#holAddName').value = ''; 
-      renderHolidays(); 
+      renderHolidays();
+      renderCalendar();
       apiSetHolidays(DB.holidays).then(refreshFromServer);
     });
     const holClear = document.getElementById('holClearBtn');
@@ -1474,7 +1476,9 @@
           saveDB(DB);
           await apiSetHolidays([]);
           await refreshFromServer();
-          renderHolidays(); buildReportCard();
+          renderHolidays();
+          renderCalendar();
+          buildReportCard();
           alert('All holidays cleared.');
         }catch(e){
           console.error('Clear holidays error:', e);
@@ -1489,6 +1493,7 @@
         DB.holidays = (DB.holidays||[]).filter(x=> (typeof x==='string'? x : x.date) !== d);
         saveDB(DB);
         renderHolidays();
+        renderCalendar();
         apiSetHolidays(DB.holidays).then(refreshFromServer);
       }
     });
