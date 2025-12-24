@@ -63,6 +63,37 @@
   
   let state = loadState();
 
+  // Ensure the selected employee matches the logged-in user (especially on shared devices)
+  function ensureSelectedEmployeeForCurrentUser(){
+    try{
+      const user = getCurrentUser();
+      if(!user || !user.email) return;
+      const current = DB && state?.selectedEmployee ? getEmployee(state.selectedEmployee) : null;
+      const match = (DB?.employees||[]).find(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+
+      // If the user is an EMPLOYEE, always default to their own record if not already selected
+      if(user.role === 'EMPLOYEE'){
+        const currentEmail = (current?.email||'').toLowerCase();
+        if(!current || currentEmail !== (user.email||'').toLowerCase()){
+          if(match){
+            state.selectedEmployee = match.id;
+            saveState();
+          }
+        }
+        return;
+      }
+
+      // For MANAGER/HR: if nothing selected (or previous selection belongs to a different user or no longer exists), default to self when available
+      const currentBelongsToAnotherUser = current && (current.email||'').toLowerCase() !== (user.email||'').toLowerCase();
+      if(!current || !getEmployee(state.selectedEmployee) || currentBelongsToAnotherUser){
+        if(match){
+          state.selectedEmployee = match.id;
+          saveState();
+        }
+      }
+    }catch(e){ /* non-critical */ }
+  }
+
   // Database API helpers
   async function apiGetAll(){
     const r = await fetch('/api/data');
@@ -1418,6 +1449,8 @@
       if(logoutBtn){
         logoutBtn.onclick = async ()=>{ 
           await fetch('/api/auth-logout'); 
+          // Clear per-user UI state so the next login doesn't inherit selected employee
+          try{ localStorage.removeItem(STATE_KEY); }catch{}
           setCurrentUser({}); 
           window.location.href = '/login.html'; 
         };
@@ -1653,6 +1686,8 @@
     // Sync fresh data from server before calculating carry-forward
     try{
       await refreshFromServer();
+      // After loading fresh data, align selection to the current user
+      ensureSelectedEmployeeForCurrentUser();
     }catch(e){
       console.error('Initial sync failed:', e);
     }
