@@ -179,9 +179,18 @@
   function renderReportLeaves(){
     const tbody = document.querySelector('#reportLeavesTable tbody');
     if(!tbody) return;
-    const empId = state.selectedEmployee || (DB.employees[0]?.id||'');
-    const year = state.year;
     const user = getCurrentUser();
+    let empId = state.selectedEmployee || '';
+    if(!empId){
+      if(user?.role === 'EMPLOYEE'){
+        const match = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+        empId = match ? match.id : '';
+      }else{
+        empId = (DB.employees[0]?.id||'');
+      }
+    }
+    const year = state.year;
+    if(!empId){ tbody.innerHTML = '<tr><td colspan="8">No employee record mapped to your account.</td></tr>'; return; }
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
       .filter(l => workingDaysInYear(l.from,l.to,year) > 0)
@@ -645,6 +654,11 @@
     // If employee role, restrict to their own record (by email)
     if(user?.role === 'EMPLOYEE'){
       list = DB.employees.filter(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+      // If no mapping, clear selection to avoid showing someone else
+      if(list.length === 0){
+        state.selectedEmployee = null;
+        saveState();
+      }
     }
     const html = list
       .map(e => `<button class="employee-tab-nav ${state.selectedEmployee === e.id ? 'active' : ''}" data-emp-id="${e.id}">${e.name}</button>`)
@@ -965,7 +979,13 @@
     const table = document.querySelector('#leavesTable tbody');
     if(!table) return; // Leaves tab not present
     const tbody = table;
-    const empFilter = $('#filterEmployee').value || '';
+    const user = getCurrentUser();
+    let empFilter = $('#filterEmployee').value || '';
+    // Enforce employee scoping: never show other employees' leaves
+    if(user?.role === 'EMPLOYEE'){
+      const match = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+      empFilter = match ? match.id : '__none__';
+    }
     const typeFilter = $('#filterType').value || '';
     const statusFilter = $('#filterStatus').value || '';
     const search = ($('#filterSearch').value||'').toLowerCase();
@@ -1055,10 +1075,19 @@
     // Use global selections by default; fall back to local controls if they exist
     const empSelect = $('#reportEmployee');
     const yearSelect = $('#reportYear');
-    const empId = (empSelect && empSelect.value) || state.selectedEmployee || (DB.employees[0]?.id || '');
+    const user = getCurrentUser();
+    let empId = (empSelect && empSelect.value) || state.selectedEmployee;
+    if(!empId){
+      if(user?.role === 'EMPLOYEE'){
+        const match = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (user.email||'').toLowerCase());
+        empId = match ? match.id : '';
+      }else{
+        empId = (DB.employees[0]?.id || '');
+      }
+    }
     const year = (yearSelect && Number(yearSelect.value)) || state.year;
     const container = $('#cardContainer');
-    if(!empId){ container.innerHTML = '<p>Select an employee to view the leave card.</p>'; return; }
+    if(!empId){ container.innerHTML = '<p>No employee record mapped to your account. Please contact HR to set up your profile.</p>'; return; }
     const emp = getEmployee(empId); if(!emp){ container.innerHTML = '<p>Employee not found.</p>'; return; }
     const ent = getEntitlement(emp, year);
     const totals = annualTotalsFor(empId, year);
