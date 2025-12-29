@@ -1260,19 +1260,21 @@
     
     // Build calendar table
     let html = '<table class="calendar"><thead><tr>';
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     dayNames.forEach(d => html += `<th>${d}</th>`);
     html += '</tr></thead><tbody><tr>';
     
     // Empty cells for days before month starts
-    for (let i = 0; i < startingDayOfWeek; i++) {
+    // Adjust for Monday-first week: convert JS Sunday=0 to Monday=0
+    const adjustedStartDay = (startingDayOfWeek + 6) % 7;
+    for (let i = 0; i < adjustedStartDay; i++) {
       html += '<td class="other-month"></td>';
     }
     
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const cellDate = new Date(year, month, day);
-      const dateStr = cellDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; // YYYY-MM-DD without timezone conversion
       const isTodayCell = isToday(cellDate);
       
       // Check if this day is a holiday
@@ -1315,13 +1317,13 @@
       html += '</div></td>';
       
       // New row every 7 days
-      if ((day + startingDayOfWeek) % 7 === 0 && day < daysInMonth) {
+      if ((day + adjustedStartDay) % 7 === 0 && day < daysInMonth) {
         html += '</tr><tr>';
       }
     }
     
     // Fill remaining cells
-    const totalCells = startingDayOfWeek + daysInMonth;
+    const totalCells = adjustedStartDay + daysInMonth;
     const remainingCells = (7 - (totalCells % 7)) % 7;
     for (let i = 0; i < remainingCells; i++) {
       html += '<td class="other-month"></td>';
