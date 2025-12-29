@@ -1346,6 +1346,22 @@
     
     html += '</tr></tbody></table>';
     calContainer.innerHTML = html;
+
+    // Equalize all day cell heights to the tallest cell for this month
+    requestAnimationFrame(() => equalizeCalendarHeights());
+  }
+
+  // Make all calendar day cells the same height based on the tallest cell
+  function equalizeCalendarHeights(){
+    try{
+      const cells = $$('#calendarContainer .calendar tbody td');
+      if(!cells.length) return;
+      // Reset to natural height to re-measure
+      cells.forEach(c => c.style.height = 'auto');
+      let maxH = 0;
+      cells.forEach(c => { const h = c.offsetHeight; if(h > maxH) maxH = h; });
+      cells.forEach(c => c.style.height = maxH + 'px');
+    }catch(e){ /* non-critical */ }
   }
 
   function updateCalendarEmployeeFilter() {
@@ -1371,6 +1387,8 @@
       
       updateCalendarEmployeeFilter();
       renderCalendar();
+      // Re-equalize heights on resize as wrapping may change cell heights
+      window.addEventListener('resize', () => requestAnimationFrame(() => equalizeCalendarHeights()));
       
       const prevBtn = $('#calPrevMonth');
       const nextBtn = $('#calNextMonth');
