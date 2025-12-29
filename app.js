@@ -145,10 +145,21 @@
   async function apiUpdateUserRole(id, role){ const r = await fetch('/api/users-update', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Update user failed'); } return (await r.json()).user; }
 
   async function refreshFromServer(){
+    // Save scroll position before re-rendering
+    const calContainer = document.getElementById('calendarContainer');
+    const scrollPos = calContainer ? calContainer.scrollTop : 0;
+    
     const data = await apiGetAll();
     DB = { meta:{updatedAt:Date.now()}, ...data };
     saveDB(DB);
     renderAll();
+    
+    // Restore scroll position after re-rendering
+    if (calContainer) {
+      requestAnimationFrame(() => {
+        calContainer.scrollTop = scrollPos;
+      });
+    }
   }
 
   // Report: inline leave management helpers and bindings
