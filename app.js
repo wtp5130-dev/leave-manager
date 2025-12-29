@@ -1260,14 +1260,12 @@
     
     // Build calendar table
     let html = '<table class="calendar"><thead><tr>';
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     dayNames.forEach(d => html += `<th>${d}</th>`);
     html += '</tr></thead><tbody><tr>';
     
     // Empty cells for days before month starts
-    // Adjust for Monday-first week: convert JS Sunday=0 to Monday=0
-    const adjustedStartDay = (startingDayOfWeek + 6) % 7;
-    for (let i = 0; i < adjustedStartDay; i++) {
+    for (let i = 0; i < startingDayOfWeek; i++) {
       html += '<td class="other-month"></td>';
     }
     
@@ -1317,13 +1315,13 @@
       html += '</div></td>';
       
       // New row every 7 days
-      if ((day + adjustedStartDay) % 7 === 0 && day < daysInMonth) {
+      if ((day + startingDayOfWeek) % 7 === 0 && day < daysInMonth) {
         html += '</tr><tr>';
       }
     }
     
     // Fill remaining cells
-    const totalCells = adjustedStartDay + daysInMonth;
+    const totalCells = startingDayOfWeek + daysInMonth;
     const remainingCells = (7 - (totalCells % 7)) % 7;
     for (let i = 0; i < remainingCells; i++) {
       html += '<td class="other-month"></td>';
