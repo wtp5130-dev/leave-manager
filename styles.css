@@ -167,7 +167,8 @@ textarea{resize:vertical}
 .calendar td {
   padding: 0;
   border: 1px solid #334155;
-  height: 120px;
+  /* allow rows to grow to fit content */
+  height: auto;
   vertical-align: top;
   background: #0b1220;
   position: relative;
@@ -198,12 +199,10 @@ textarea{resize:vertical}
 }
 
 .cal-leaves {
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: 28px; /* below day number */
-  bottom: 6px;
-  overflow-y: auto;
+  /* let the day cell grow vertically instead of showing an inner scrollbar */
+  position: static;
+  margin: 28px 6px 6px 6px; /* leave space for day number */
+  overflow: visible;
 }
 
 .cal-holiday {
