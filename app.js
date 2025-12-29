@@ -145,21 +145,27 @@
   async function apiUpdateUserRole(id, role){ const r = await fetch('/api/users-update', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Update user failed'); } return (await r.json()).user; }
 
   async function refreshFromServer(){
-    // Save scroll position before re-rendering
-    const calContainer = document.getElementById('calendarContainer');
-    const scrollPos = calContainer ? calContainer.scrollTop : 0;
-    
+    // Save scroll positions (window and calendar container) before re-rendering
+    const prevCal = document.getElementById('calendarContainer');
+    const calScrollLeft = prevCal ? prevCal.scrollLeft : 0;
+    const calScrollTop  = prevCal ? prevCal.scrollTop  : 0;
+    const winX = window.scrollX || 0;
+    const winY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+
     const data = await apiGetAll();
     DB = { meta:{updatedAt:Date.now()}, ...data };
     saveDB(DB);
     renderAll();
-    
-    // Restore scroll position after re-rendering
-    if (calContainer) {
-      requestAnimationFrame(() => {
-        calContainer.scrollTop = scrollPos;
-      });
-    }
+
+    // Restore scroll positions after re-rendering
+    requestAnimationFrame(() => {
+      const newCal = document.getElementById('calendarContainer');
+      if (newCal) {
+        newCal.scrollLeft = calScrollLeft;
+        newCal.scrollTop  = calScrollTop;
+      }
+      window.scrollTo(winX, winY);
+    });
   }
 
   // Report: inline leave management helpers and bindings
@@ -1682,7 +1688,30 @@
     startAutoSync();
     window.addEventListener('online', ()=> scheduleDebouncedSync('online'));
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) scheduleDebouncedSync('tab-focus'); });
-    window.addEventListener('storage', (e)=>{ if(e.key===STORE_KEY) { DB = loadDB(); renderAll(); scheduleDebouncedSync('storage'); } });
+    window.addEventListener('storage', (e)=>{
+      if(e.key===STORE_KEY) {
+        // Preserve scroll positions during re-render triggered by storage event
+        const prevCal = document.getElementById('calendarContainer');
+        const calScrollLeft = prevCal ? prevCal.scrollLeft : 0;
+        const calScrollTop  = prevCal ? prevCal.scrollTop  : 0;
+        const winX = window.scrollX || 0;
+        const winY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+
+        DB = loadDB();
+        renderAll();
+
+        requestAnimationFrame(()=>{
+          const newCal = document.getElementById('calendarContainer');
+          if (newCal) {
+            newCal.scrollLeft = calScrollLeft;
+            newCal.scrollTop  = calScrollTop;
+          }
+          window.scrollTo(winX, winY);
+        });
+
+        scheduleDebouncedSync('storage');
+      }
+    });
   }
 
   function renderAll(){
