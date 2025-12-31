@@ -511,7 +511,14 @@
     }catch(e){ console.log('Toast:', message); }
   }
 
-  // Inbox (pending leaves) for Manager/HR
+  // Inbox (pending leaves for Manager/HR) and status updates for Employees
+  function getEmpInboxKey(){
+    try{ const me = getCurrentUser(); const email = (me?.email||'anon').toLowerCase(); return `leaveManager.inbox.seen.${email}`; }catch{ return 'leaveManager.inbox.seen.anon'; }
+  }
+  function loadEmpInboxSeen(){ try{ return JSON.parse(localStorage.getItem(getEmpInboxKey())||'{}'); }catch{ return {}; } }
+  function saveEmpInboxSeen(data){ try{ localStorage.setItem(getEmpInboxKey(), JSON.stringify(data||{})); }catch{} }
+  function leaveVersion(l){ return `${l.status||'PENDING'}|${l.approvedAt||''}|${l.applied||''}`; }
+
   function updateInbox(){
     try{
       const user = getCurrentUser();
@@ -520,31 +527,75 @@
       const panel = document.getElementById('inboxDropdown');
       if(!btn || !countEl || !panel) return;
       const isManager = user && (user.role==='MANAGER' || user.role==='HR');
-      // Hide inbox for employees
-      btn.style.display = isManager ? '' : 'none';
-      if(!isManager){ panel.style.display='none'; return; }
-      const pending = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING');
-      countEl.textContent = String(pending.length);
-      if(pending.length===0){ panel.innerHTML = '<div class="panel"><p>No pending applications.</p></div>'; return; }
-      const items = pending
-        .sort((a,b)=> (a.applied||'').localeCompare(b.applied||''))
-        .slice(0,100)
-        .map(l=>{
-          const emp = getEmployee(l.employeeId)||{name:'[deleted]'};
-          return `<div class="panel" style="margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-              <div>
-                <strong>${emp.name}</strong> • ${l.type}
-                <div style="color:var(--muted);font-size:12px">${l.from||''} → ${l.to||''} • Applied ${l.applied||''}</div>
+      const isEmployee = user && user.role==='EMPLOYEE';
+
+      // Show inbox for both managers and employees
+      btn.style.display = (isManager || isEmployee) ? '' : 'none';
+      if(!(isManager || isEmployee)){ panel.style.display='none'; return; }
+
+      if(isManager){
+        const pending = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING');
+        countEl.textContent = String(pending.length);
+        if(pending.length===0){ panel.innerHTML = '<div class="panel"><p>No pending applications.</p></div>'; return; }
+        const items = pending
+          .sort((a,b)=> (a.applied||'').localeCompare(b.applied||''))
+          .slice(0,100)
+          .map(l=>{
+            const emp = getEmployee(l.employeeId)||{name:'[deleted]'};
+            return `<div class="panel" style="margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <div>
+                  <strong>${emp.name}</strong> • ${l.type}
+                  <div style="color:var(--muted);font-size:12px">${l.from||''} → ${l.to||''} • Applied ${l.applied||''}</div>
+                </div>
+                <div class="actions">
+                  <button class="ghost" data-inbox-act="approve" data-id="${l.id}">Approve</button>
+                  <button class="ghost" data-inbox-act="reject" data-id="${l.id}">Reject</button>
+                </div>
               </div>
-              <div class="actions">
-                <button class="ghost" data-inbox-act="approve" data-id="${l.id}">Approve</button>
-                <button class="ghost" data-inbox-act="reject" data-id="${l.id}">Reject</button>
-              </div>
+            </div>`;
+          }).join('');
+        panel.innerHTML = items;
+        return;
+      }
+
+      // Employee inbox: show status updates for own leaves
+      const meEmail = (user?.email||'').toLowerCase();
+      const myEmp = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === meEmail);
+      if(!myEmp){ countEl.textContent = '0'; panel.innerHTML = '<div class="panel"><p>No profile found.</p></div>'; return; }
+      const seen = loadEmpInboxSeen();
+      const myLeaves = (DB.leaves||[])
+        .filter(l => l.employeeId === myEmp.id)
+        .sort((a,b)=> (b.approvedAt||b.applied||'').localeCompare(a.approvedAt||a.applied||''))
+        .slice(0,100);
+      const notifLeaves = myLeaves.filter(l => (l.status==='APPROVED' || l.status==='REJECTED'));
+      const unread = notifLeaves.filter(l => (seen[l.id]||'') !== leaveVersion(l));
+      countEl.textContent = String(unread.length);
+      if(myLeaves.length===0){ panel.innerHTML = '<div class="panel"><p>No leave applications yet.</p></div>'; return; }
+      const header = `<div class="panel" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <strong>My Inbox</strong>
+        <div class="actions"><button class="ghost" data-emp-act="mark-all-read">Mark all as read</button></div>
+      </div>`;
+      const items = myLeaves.map(l =>{
+        const v = leaveVersion(l);
+        const isUnread = (l.status==='APPROVED' || l.status==='REJECTED') && (seen[l.id]||'') !== v;
+        const status = l.status||'PENDING';
+        const when = l.approvedAt || l.applied || '';
+        const sub = status==='PENDING' ? `Applied ${l.applied||''}` : `${status==='APPROVED'?'Approved':'Rejected'} ${when}`;
+        return `<div class="panel" style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <strong>${l.type}</strong> • ${l.from||''} → ${l.to||''}
+              <div style="color:var(--muted);font-size:12px">${sub}</div>
             </div>
-          </div>`;
-        }).join('');
-      panel.innerHTML = items;
+            <div class="actions">
+              ${isUnread ? '<span class="inb-dot" title="Unread"></span>' : ''}
+              ${isUnread ? `<button class="ghost" data-emp-act="mark-read" data-id="${l.id}">Mark read</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      panel.innerHTML = header + items;
     }catch(e){ console.warn('updateInbox error:', e); }
   }
 
@@ -1278,21 +1329,41 @@
       panel.addEventListener('click', async (e)=>{
         const btn = e.target.closest('button'); if(!btn) return;
         const act = btn.dataset.inboxAct; const id = btn.dataset.id;
-        if(!act || !id) return;
-        try{
-          const l = DB.leaves.find(x=>x.id===id); if(!l) return;
-          const user = getCurrentUser(); if(!['MANAGER','HR'].includes(user.role)) return;
-          l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
-          l.approvedBy = user.name||'Manager';
-          l.approvedAt = today();
-          console.log('Inbox: updating leave', id, 'to status', l.status);
-          saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
-          console.log('Inbox: refresh complete, rendering all views');
-          renderAll();
-          // Keep inbox open after action; it will refresh with remaining items
-          const okMsg = act==='approve' ? 'Leave approved.' : 'Leave rejected.';
-          if(typeof showToast === 'function') showToast(okMsg, act==='approve' ? 'success' : 'error');
-        }catch(err){ console.error('Inbox action error:', err); alert('Action failed: ' + (err?.message||'Unknown')); }
+        const empAct = btn.dataset.empAct;
+        const user = getCurrentUser();
+        // Manager actions
+        if(act){
+          if(!id) return;
+          try{
+            const l = DB.leaves.find(x=>x.id===id); if(!l) return;
+            if(!['MANAGER','HR'].includes(user.role)) return;
+            l.status = (act==='approve') ? 'APPROVED' : 'REJECTED';
+            l.approvedBy = user.name||'Manager';
+            l.approvedAt = today();
+            console.log('Inbox: updating leave', id, 'to status', l.status);
+            saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
+            console.log('Inbox: refresh complete, rendering all views');
+            renderAll();
+            const okMsg = act==='approve' ? 'Leave approved.' : 'Leave rejected.';
+            if(typeof showToast === 'function') showToast(okMsg, act==='approve' ? 'success' : 'error');
+          }catch(err){ console.error('Inbox action error:', err); alert('Action failed: ' + (err?.message||'Unknown')); }
+          return;
+        }
+        // Employee actions
+        if(empAct){
+          const seen = loadEmpInboxSeen();
+          if(empAct==='mark-read' && id){
+            const l = DB.leaves.find(x=>x.id===id); if(l){ seen[id] = leaveVersion(l); saveEmpInboxSeen(seen); }
+            updateInbox();
+            return;
+          }
+          if(empAct==='mark-all-read'){
+            (DB.leaves||[]).forEach(l=>{ if(l.status==='APPROVED' || l.status==='REJECTED') seen[l.id] = leaveVersion(l); });
+            saveEmpInboxSeen(seen);
+            updateInbox();
+            return;
+          }
+        }
       });
     }
   }
