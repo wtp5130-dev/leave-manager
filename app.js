@@ -210,7 +210,9 @@
     if(!empId){ tbody.innerHTML = '<tr><td colspan="8">No employee record mapped to your account.</td></tr>'; return; }
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
-      .filter(l => workingDaysInYear(l.from,l.to,year) > 0)
+      // Always show PENDING items even if they are from another year,
+      // so managers/HR don't miss cross-year applications
+      .filter(l => (l.status === 'PENDING') || workingDaysInYear(l.from,l.to,year) > 0)
       .sort((a,b)=> (a.from||'').localeCompare(b.from||''))
       .map(l=>{
         const tr = document.createElement('tr');
