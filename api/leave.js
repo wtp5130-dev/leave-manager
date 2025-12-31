@@ -65,7 +65,19 @@ export default async function handler(req, res) {
     }
     
     await touchChange();
-    await broadcastChange({ scope: 'leave' });
+    // Broadcast realtime update with minimal leave details for client-side notifications
+    await broadcastChange({
+      scope: 'leave',
+      type: 'leave-updated',
+      leave: {
+        id: l.id,
+        employeeId: l.employeeId,
+        status: l.status || 'PENDING',
+        from: l.from || null,
+        to: l.to || null,
+        leaveType: l.type || null
+      }
+    });
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('leave endpoint error:', err);

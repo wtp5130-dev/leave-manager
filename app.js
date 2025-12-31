@@ -402,6 +402,8 @@
             saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
             buildReportCard(); renderReportLeaves();
             activateTab('reports');
+            const okMsg = act==='report-approve' ? 'Leave approved.' : 'Leave rejected.';
+            if(typeof showToast === 'function') showToast(okMsg, act==='report-approve' ? 'success' : 'error');
           }catch(err){ console.error('Approve/Reject error:', err); alert('Error: ' + (err?.message||'Unknown')); }
         }
       });
@@ -446,7 +448,7 @@
       if(!key || !cluster) return;
       const p = new window.Pusher(key, { cluster, authTransport: 'ajax' });
       const channel = p.subscribe('leave-manager');
-      channel.bind('changed', async () => {
+      channel.bind('changed', async (data) => {
         const prev = (DB.leaves||[]).filter(l => (l.status||'PENDING')==='PENDING').length;
         await refreshFromServer();
         updateInbox();
@@ -456,10 +458,58 @@
           const panel = document.getElementById('inboxDropdown');
           if(panel){ panel.style.display='block'; }
         }
+        // Notify employee on their leave updates
+        try{
+          if(data && data.type === 'leave-updated' && data.leave){
+            const me = getCurrentUser();
+            if(me && me.email){
+              const myEmp = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (me.email||'').toLowerCase());
+              if(myEmp && myEmp.id === data.leave.employeeId && me.role === 'EMPLOYEE'){
+                const status = data.leave.status || 'UPDATED';
+                const lt = data.leave.leaveType || 'Leave';
+                const from = data.leave.from || '';
+                const to = data.leave.to || '';
+                const msg = status === 'APPROVED'
+                  ? `Your ${lt} (${from} → ${to}) was approved.`
+                  : status === 'REJECTED'
+                    ? `Your ${lt} (${from} → ${to}) was rejected.`
+                    : `Your ${lt} (${from} → ${to}) was updated.`;
+                if(typeof showToast === 'function') showToast(msg, status === 'REJECTED' ? 'error' : 'success');
+              }
+            }
+          }
+        }catch(e){ /* ignore */ }
       });
     }catch(e){ /* ignore */ }
   }
   function setStatus(msg){ const el = document.getElementById('cloudStatus'); if(el) el.textContent = msg||''; }
+
+  // Toast notifications
+  function getToastContainer(){
+    let c = document.getElementById('toastContainer');
+    if(!c){
+      c = document.createElement('div');
+      c.id = 'toastContainer';
+      document.body.appendChild(c);
+    }
+    return c;
+  }
+  function showToast(message, type='info', opts={}){
+    try{
+      const container = getToastContainer();
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = message;
+      container.appendChild(t);
+      requestAnimationFrame(()=> t.classList.add('show'));
+      const ttl = Math.max(2000, opts.duration||3000);
+      setTimeout(()=>{
+        t.classList.remove('show');
+        t.classList.add('hide');
+        setTimeout(()=> t.remove(), 250);
+      }, ttl);
+    }catch(e){ console.log('Toast:', message); }
+  }
 
   // Inbox (pending leaves) for Manager/HR
   function updateInbox(){
@@ -1074,7 +1124,8 @@
           l.approvedAt = today();
           console.log('Updating leave status to:', l.status);
           saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
-          alert(`Leave ${act}ed successfully.`);
+          const okMsg = act==='approve' ? 'Leave approved.' : 'Leave rejected.';
+          if(typeof showToast === 'function') showToast(okMsg, act==='approve' ? 'success' : 'error');
         }catch(err){
           console.error('Approve/Reject error:', err);
           alert(`Error ${act}ing leave: ${err?.message || 'Unknown error'}`);
@@ -1238,8 +1289,9 @@
           saveDB(DB); await apiSaveLeave(l); await refreshFromServer();
           console.log('Inbox: refresh complete, rendering all views');
           renderAll();
-          panel.style.display='none';
-          alert(`Leave ${act}d successfully.`);
+          // Keep inbox open after action; it will refresh with remaining items
+          const okMsg = act==='approve' ? 'Leave approved.' : 'Leave rejected.';
+          if(typeof showToast === 'function') showToast(okMsg, act==='approve' ? 'success' : 'error');
         }catch(err){ console.error('Inbox action error:', err); alert('Action failed: ' + (err?.message||'Unknown')); }
       });
     }
