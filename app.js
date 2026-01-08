@@ -230,7 +230,7 @@
       }
     }
     const year = state.year;
-    if(!empId){ tbody.innerHTML = '<tr><td colspan="9">No employee record mapped to your account.</td></tr>'; return; }
+    if(!empId){ tbody.innerHTML = '<tr><td colspan="10">No employee record mapped to your account.</td></tr>'; return; }
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
       // Always show PENDING items even if they are from another year,
@@ -242,9 +242,11 @@
         const actionsAllowed = (user?.role==='MANAGER' || user?.role==='HR');
         const daysDisplay = l.isHalfDay ? `${l.days} (${l.session || 'N/A'})` : (l.days ?? workingDays(l.from,l.to));
         const appliedBy = userDisplayById(l.createdBy || '');
+        const approvedBy = l.approvedBy || '';
         tr.innerHTML = actionsAllowed ? `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
+          <td>${approvedBy||''}</td>
           <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
@@ -259,6 +261,7 @@
           </td>` : `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
+          <td>${approvedBy||''}</td>
           <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
@@ -327,6 +330,17 @@
           const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
           entry.employeeId = state.selectedEmployee || (DB.employees[0]?.id||'');
           if(!entry.employeeId){ alert('Please select an employee'); return; }
+          // Double confirmation if applying for someone else (EMPLOYEE or MANAGER)
+          try{
+            const me = getCurrentUser();
+            const myEmp = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (me.email||'').toLowerCase());
+            if((me?.role==='EMPLOYEE' || me?.role==='MANAGER') && myEmp && myEmp.id !== entry.employeeId){
+              const target = getEmployee(entry.employeeId);
+              const msg1 = `You are applying leave for ${target?.name||'another employee'}, but you are logged in as ${me?.name||me?.email||'Unknown'}. Are you sure you're on the correct employee tab?`;
+              if(!confirm(msg1)) return;
+              if(!confirm('Please confirm again to proceed.')) return;
+            }
+          }catch{}
           entry.type = document.getElementById('reportLeaveType').value;
           entry.status = entry.status || 'PENDING';
           entry.applied = document.getElementById('reportLeaveApplied').value || today();
@@ -1089,6 +1103,17 @@
         const entry = isNew ? { id } : DB.leaves.find(l=>l.id===id);
         entry.employeeId = $('#leaveEmployee').value;
         if(!entry.employeeId){ alert('Please select an employee'); return; }
+        // Double confirmation if applying for someone else (EMPLOYEE or MANAGER)
+        try{
+          const me = getCurrentUser();
+          const myEmp = (DB.employees||[]).find(e => (e.email||'').toLowerCase() === (me.email||'').toLowerCase());
+          if((me?.role==='EMPLOYEE' || me?.role==='MANAGER') && myEmp && myEmp.id !== entry.employeeId){
+            const target = getEmployee(entry.employeeId);
+            const msg1 = `You are applying leave for ${target?.name||'another employee'}, but you are logged in as ${me?.name||me?.email||'Unknown'}. Are you sure you're on the correct employee tab?`;
+            if(!confirm(msg1)) return;
+            if(!confirm('Please confirm again to proceed.')) return;
+          }
+        }catch{}
         entry.type = $('#leaveType').value;
         entry.status = entry.status || 'PENDING';
         entry.applied = $('#leaveApplied').value || today();
