@@ -7,8 +7,9 @@
   --primary-600:#4338ca;
   --accent:#22c55e;
   --danger:#ef4444;
-  --card-bg:#fff5f7;
-  --card-border:#e2a5b2;
+  /* Leave Card palette (lavender to match site theme) */
+  --card-bg:#f3e8ff;        /* lavender */
+  --card-border:#c4b5fd;    /* light indigo */
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -128,20 +129,28 @@ textarea{resize:vertical}
 /* Card styles (print-friendly) */
 .card-container{background:var(--card-bg);color:#111;padding:20px;border-radius:12px;border:1px solid var(--card-border)}
 .report-split{display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start;margin-bottom:16px}
-.apply-box{background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;position:sticky;top:16px;width:100%}
+.apply-box{
+  background:linear-gradient(135deg, rgba(79,70,229,0.18), rgba(2,6,23,0.55));
+  border:1px solid var(--primary-600);
+  border-radius:12px;
+  padding:14px;
+  position:sticky;top:16px;
+  width:100%;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
 .card-container{max-width:none;width:100%}
-.card{width:100%;background:#ffd6e0;border:2px solid #d88a99;border-radius:8px;padding:16px}
+.card{width:100%;background:var(--card-bg);border:2px solid var(--card-border);border-radius:8px;padding:16px}
 .card h3{margin:0 0 8px 0;text-align:center}
 .card small{color:#374151}
 .card .grid{grid-template-columns:repeat(4, 1fr);gap:12px}
 .card .row{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:6px}
 .card .label{grid-column:span 3;font-weight:600}
 .card .value{grid-column:span 3}
-.card .section-title{margin-top:14px;margin-bottom:6px;font-weight:700;border-bottom:2px solid #e9aabb}
+.card .section-title{margin-top:14px;margin-bottom:6px;font-weight:700;border-bottom:2px solid var(--card-border)}
 
-.card table{width:100%;border-collapse:collapse;background:white;border:1px solid #e9aabb;margin-bottom:8px}
-.card table th{background:#ffe6ec;font-weight:600;text-align:left}
-.card table th,.card table td{border:1px solid #e9aabb;padding:8px;font-size:12px;text-align:left}
+.card table{width:100%;border-collapse:collapse;background:white;border:1px solid #ddd6fe;margin-bottom:8px}
+.card table th{background:#ede9fe;font-weight:600;text-align:left}
+.card table th,.card table td{border:1px solid #ddd6fe;padding:8px;font-size:12px;text-align:left}
 .card table td{vertical-align:top}
 
 /* Column width alignment for better balance */
