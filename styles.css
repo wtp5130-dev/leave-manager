@@ -131,12 +131,12 @@ textarea{resize:vertical}
 .report-split{display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start;margin-bottom:16px}
 .apply-box{
   background:linear-gradient(135deg, rgba(79,70,229,0.18), rgba(2,6,23,0.55));
-  border:1px solid var(--primary-600);
-  border-radius:12px;
+  border:2px solid var(--card-border); /* match Leave Card border */
+  border-radius:8px;
   padding:14px;
   position:sticky;top:16px;
   width:100%;
-  box-shadow:0 6px 20px rgba(0,0,0,.25);
+  box-shadow:none;
 }
 .card-container{max-width:none;width:100%}
 .card{width:100%;background:var(--card-bg);border:2px solid var(--card-border);border-radius:8px;padding:16px}
