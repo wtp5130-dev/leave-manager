@@ -322,7 +322,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 input[type="date"]::-ms-clear{ display:none; }
 
 /* Make Reason field same height as other inputs */
-#reportLeaveReason{ height: 36px; min-height: 36px; }
+#reportLeaveReason{ height: 80px; min-height: 80px; }
+
+/* Half Day alignment */
+#reportHalfDayLabel{ display:flex; align-items:center; gap:8px; justify-content:flex-start; text-align:left; }
+#reportHalfDayLabel input{ width:auto; }
 
 /* Tighter, two-column layout inside apply panel */
 .apply-box #reportLeaveForm{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }
