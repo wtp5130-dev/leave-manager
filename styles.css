@@ -16,7 +16,10 @@ body{
   margin:0;
   font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--text);
-  background:linear-gradient(180deg,#0a0e14 0%, #0b1220 100%);
+  /* Site background image with dark overlay for readability */
+  background:
+    linear-gradient(rgba(2,6,23,0.80), rgba(2,6,23,0.80)),
+    url('/assets/site-background.jpg') center / cover no-repeat fixed;
 }
 .app-header{
   display:flex;justify-content:space-between;align-items:center;
