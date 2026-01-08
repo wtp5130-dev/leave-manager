@@ -1149,6 +1149,8 @@
     if(!table) return; // Leaves tab not present
     const tbody = table;
     const user = getCurrentUser();
+    // Preload users cache for potential lookups (safe if absent)
+    ensureUsersCache();
     let empFilter = $('#filterEmployee').value || '';
     // Enforce employee scoping: never show other employees' leaves
     if(user?.role === 'EMPLOYEE'){
@@ -1167,15 +1169,16 @@
       .map(l =>{
         const emp = getEmployee(l.employeeId)||{name:'[deleted]'};
         const tr = document.createElement('tr');
+        const statusHtml = `<span class="status-badge status-${(l.status||'PENDING').toUpperCase()}">${l.status||'PENDING'}</span>`;
         tr.innerHTML = `
           <td>${emp.name}</td>
           <td>${l.type}</td>
-          <td>${l.status||'PENDING'}</td>
+          <td>${statusHtml}</td>
           <td>${l.applied||''}</td>
           <td>${l.from}</td>
           <td>${l.to}</td>
-          <td>${l.days ?? workingDays(l.from,l.to)}</td>
-          <td>${l.reason||''}</td>
+          <td class="num">${l.days ?? workingDays(l.from,l.to)}</td>
+          <td class="wrap ellipsis" title="${(l.reason||'').replaceAll('"','&quot;')}">${l.reason||''}</td>
           <td class="actions">
             <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
             <button class="danger" data-act="del" data-id="${l.id}">Delete</button>
@@ -1185,6 +1188,8 @@
         return tr;
       });
     tbody.innerHTML=''; rows.forEach(r=>tbody.appendChild(r));
+    const leavesTableEl = document.getElementById('leavesTable');
+    if(leavesTableEl) leavesTableEl.classList.add('compact');
   }
   function bindLeavesTable(){
     const leavesTable = document.getElementById('leavesTable');
