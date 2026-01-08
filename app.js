@@ -63,6 +63,14 @@
   
   let state = loadState();
 
+  // Track recent user scroll to prevent sync-induced jumps
+  let lastScrollInfo = { x: 0, y: 0, ts: 0 };
+  try{
+    window.addEventListener('scroll', () => {
+      lastScrollInfo = { x: window.scrollX || 0, y: window.scrollY || document.documentElement.scrollTop || 0, ts: Date.now() };
+    }, { passive: true });
+  }catch{}
+
   // Ensure the selected employee matches the logged-in user (especially on shared devices)
   function ensureSelectedEmployeeForCurrentUser(){
     try{
@@ -177,14 +185,19 @@
     saveDB(DB);
     renderAll();
 
-    // Restore scroll positions after re-rendering
+    // Restore scroll positions after re-rendering, but avoid fighting the user
     requestAnimationFrame(() => {
       const newCal = document.getElementById('calendarContainer');
       if (newCal) {
         newCal.scrollLeft = calScrollLeft;
         newCal.scrollTop  = calScrollTop;
       }
-      window.scrollTo(winX, winY);
+      // Only restore window scroll if the user hasn't scrolled since we captured
+      const userIsActivelyScrolling = (Date.now() - (lastScrollInfo.ts||0)) < 600; // within 600ms
+      const userMoved = Math.abs((lastScrollInfo.y||0) - winY) > 4 || Math.abs((lastScrollInfo.x||0) - winX) > 4;
+      if(!userIsActivelyScrolling && !userMoved){
+        window.scrollTo(winX, winY);
+      }
     });
   }
 
