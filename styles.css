@@ -124,9 +124,9 @@ textarea{resize:vertical}
 
 /* Card styles (print-friendly) */
 .card-container{background:var(--card-bg);color:#111;padding:20px;border-radius:12px;border:1px solid var(--card-border)}
-.report-split{display:grid;grid-template-columns:minmax(620px, 1fr) 420px;gap:20px;align-items:start;margin-bottom:16px}
-.apply-box{background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;position:sticky;top:16px}
-.card-container{max-width:860px}
+.report-split{display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start;margin-bottom:16px}
+.apply-box{background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;position:sticky;top:16px;width:100%}
+.card-container{max-width:none;width:100%}
 .card{width:100%;background:#ffd6e0;border:2px solid #d88a99;border-radius:8px;padding:16px}
 .card h3{margin:0 0 8px 0;text-align:center}
 .card small{color:#374151}
