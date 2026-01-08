@@ -309,6 +309,36 @@ input[type="date"]::-ms-clear{ display:none; }
 /* Make Reason field same height as other inputs */
 #reportLeaveReason{ height: 36px; min-height: 36px; }
 
+/* UX improvements: compact tables, zebra rows, badges, responsive columns */
+.table.compact th, .table.compact td { padding: 8px 10px; }
+.table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table td.wrap { white-space: normal; }
+.table td.ellipsis { max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actions button { padding: 4px 8px; font-size: 12px; border-radius: 6px; }
+
+/* Status badges */
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; letter-spacing:.2px; }
+.status-PENDING { background:#3b2a0a; color:#fbbf24; border:1px solid #b45309; }
+.status-APPROVED { background:#0f2e1b; color:#86efac; border:1px solid #14532d; }
+.status-REJECTED { background:#3b0a0a; color:#fecaca; border:1px solid #7f1d1d; }
+
+/* Report table column widths for readability */
+#reportLeavesTable thead th:nth-child(1){ width:10%; }
+#reportLeavesTable thead th:nth-child(2){ width:10%; }
+#reportLeavesTable thead th:nth-child(3){ width:12%; }
+#reportLeavesTable thead th:nth-child(4){ width:12%; }
+#reportLeavesTable thead th:nth-child(5){ width:11%; }
+#reportLeavesTable thead th:nth-child(6){ width:11%; }
+#reportLeavesTable thead th:nth-child(7){ width:6%; }
+#reportLeavesTable thead th:nth-child(8){ width:auto; }
+#reportLeavesTable thead th:nth-child(9){ width:14%; }
+
+@media (max-width: 900px){
+  .table-wrap{ overflow-x:auto; }
+  #reportLeaveForm{ grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+}
+
 .print-only{display:none}
 @media print{
   body{background:white}

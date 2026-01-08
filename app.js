@@ -231,6 +231,7 @@
     }
     const year = state.year;
     if(!empId){ tbody.innerHTML = '<tr><td colspan="10">No employee record mapped to your account.</td></tr>'; return; }
+    const emp = getEmployee(empId);
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
       // Always show PENDING items even if they are from another year,
@@ -241,18 +242,20 @@
         const tr = document.createElement('tr');
         const actionsAllowed = (user?.role==='MANAGER' || user?.role==='HR');
         const daysDisplay = l.isHalfDay ? `${l.days} (${l.session || 'N/A'})` : (l.days ?? workingDays(l.from,l.to));
-        const appliedBy = userDisplayById(l.createdBy || '');
+        const appliedUser = l.createdBy ? USERS_BY_ID[l.createdBy] : null;
+        const appliedBy = appliedUser ? ( (emp && appliedUser.email && emp.email && appliedUser.email.toLowerCase()===emp.email.toLowerCase()) ? 'Self' : (appliedUser.name || appliedUser.email || '') ) : userDisplayById(l.createdBy || '');
         const approvedBy = l.approvedBy || '';
+        const statusHtml = `<span class="status-badge status-${(l.status||'PENDING').toUpperCase()}">${l.status||'PENDING'}</span>`;
         tr.innerHTML = actionsAllowed ? `
           <td>${l.type}</td>
-          <td>${l.status||'PENDING'}</td>
+          <td>${statusHtml}</td>
           <td>${approvedBy||''}</td>
           <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
-          <td>${daysDisplay}</td>
-          <td>${l.reason||''}</td>
+          <td class="num">${daysDisplay}</td>
+          <td class="wrap ellipsis" title="${(l.reason||'').replaceAll('"','&quot;')}">${l.reason||''}</td>
           <td class="actions">
             <button class="ghost" data-act="report-edit" data-id="${l.id}">Edit</button>
             <button class="danger" data-act="report-del" data-id="${l.id}">Delete</button>
@@ -260,19 +263,22 @@
             <button class="ghost" data-act="report-reject" data-id="${l.id}">Reject</button>
           </td>` : `
           <td>${l.type}</td>
-          <td>${l.status||'PENDING'}</td>
+          <td>${statusHtml}</td>
           <td>${approvedBy||''}</td>
           <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
-          <td>${daysDisplay}</td>
-          <td>${l.reason||''}</td>
+          <td class="num">${daysDisplay}</td>
+          <td class="wrap ellipsis" title="${(l.reason||'').replaceAll('"','&quot;')}">${l.reason||''}</td>
           <td></td>`;
         return tr;
       });
     tbody.innerHTML = '';
     rows.forEach(r=>tbody.appendChild(r));
+    // Compact mode for better density
+    const table = document.getElementById('reportLeavesTable');
+    if(table) table.classList.add('compact');
   }
 
   function bindReportLeaves(){
