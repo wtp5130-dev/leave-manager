@@ -149,12 +149,18 @@
           <button id="refreshReport" class="ghost">Refresh</button>
           <button id="printBtn" class="primary">Print</button>
         </div>
-        <div id="cardContainer" class="card-container">
-          <!-- Generated content will render here -->
-        </div>
 
-        <div class="section-title">Manage Leaves (for selected employee & year)</div>
-        <form id="reportLeaveForm" class="grid">
+        <!-- Side-by-side layout: card on the left, apply form on the right -->
+        <div class="report-split">
+          <div class="card-col">
+            <div id="cardContainer" class="card-container">
+              <!-- Generated content will render here -->
+            </div>
+          </div>
+          <aside class="apply-col">
+            <div class="apply-box">
+              <div class="section-title" style="margin-top:0;">Manage Leaves (for selected employee & year)</div>
+              <form id="reportLeaveForm" class="grid">
           <input type="hidden" id="reportLeaveId" />
           <label>Type
             <select id="reportLeaveType" required>
@@ -188,7 +194,10 @@
             <button type="submit" class="primary">Apply Leave</button>
             <button type="reset" id="reportLeaveCancelBtn" class="ghost">Clear</button>
           </div>
-        </form>
+              </form>
+            </div>
+          </aside>
+        </div>
 
         <div class="table-wrap">
           <table id="reportLeavesTable" class="table">
