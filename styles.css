@@ -327,7 +327,7 @@ input[type="date"]::-ms-clear{ display:none; }
 /* Tighter, two-column layout inside apply panel */
 .apply-box #reportLeaveForm{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }
 .apply-box #reportLeaveForm .grid-span-2{ grid-column: 1 / -1; }
-.apply-box .section-title{ font-size:14px; color:var(--muted); margin-bottom:6px; }
+.apply-box .section-title{ font-size:1.25rem; font-weight:700; color:var(--text); margin-bottom:8px; }
 
 /* UX improvements: compact tables, zebra rows, badges, responsive columns */
 .table.compact th, .table.compact td { padding: 8px 10px; }
