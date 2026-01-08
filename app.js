@@ -676,6 +676,26 @@
     return workingDaysInRange(fromStr, toStr, rs, re);
   }
 
+  // Compute effective leave days that fall within a specific year.
+  // - Honors half-day entries (isHalfDay with same-day from/to) as 0.5
+  // - If a custom l.days is provided and the leave is fully within the year, use it
+  // - Falls back to business-day calculation for cross-year or unspecified cases
+  function daysForLeaveInYear(l, year){
+    if(!l) return 0;
+    const from = l.from || '', to = l.to || '';
+    const fy = Number(from.slice(0,4)||0), ty = Number(to.slice(0,4)||0), y = Number(year);
+    // Half day on a single date within the requested year
+    if(l.isHalfDay && from && to && from === to && fy === y){
+      return 0.5;
+    }
+    // If explicitly stored days and the range is contained within the same year
+    if(typeof l.days === 'number' && !isNaN(l.days) && from && to && fy === ty && fy === y){
+      return Number(l.days);
+    }
+    // Fallback to business days within the year
+    return workingDaysInYear(from, to, year);
+  }
+
   // Data helpers
   const nid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
   function getEmployee(id){ return DB.employees.find(e => e.id===id); }
@@ -691,7 +711,7 @@
   function annualTotalsFor(empId, year){
     const totalDays = DB.leaves
       .filter(l => l.employeeId===empId && l.type==='ANNUAL' && (l.status==='APPROVED' || l.status===undefined))
-      .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
+      .reduce((sum,l)=> sum + daysForLeaveInYear(l, year), 0);
     const ent = getEntitlement(getEmployee(empId), year);
     const entitlement = (ent.carry||0)+(ent.current||0);
     const balance = entitlement - totalDays;
@@ -700,7 +720,7 @@
   function totalsByType(empId, year, type){
     return DB.leaves
       .filter(l => l.employeeId===empId && l.type===type && (l.status==='APPROVED' || l.status===undefined))
-      .reduce((sum,l)=> sum + workingDaysInYear(l.from,l.to,year), 0);
+      .reduce((sum,l)=> sum + daysForLeaveInYear(l, year), 0);
   }
   function getCarryForwardBalance(empId, year){
     // Calculate unused balance from given year that should carry to next year
@@ -1277,7 +1297,7 @@
     const annualRows = annual
       .filter(l => l.status==='APPROVED' || l.status===undefined)
       .map(l =>{
-        const daysInYear = workingDaysInYear(l.from,l.to,year);
+        const daysInYear = daysForLeaveInYear(l, year);
         runningBalance -= daysInYear;
         return `<tr>
           <td>${l.applied||''}</td>
