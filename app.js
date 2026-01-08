@@ -101,7 +101,9 @@
     return r.json();
   }
   async function apiSaveEmployee(emp, ent){
-    const r = await fetch('/api/employee', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:emp.id, name:emp.name, email:emp.email, role:emp.role, jobTitle:emp.jobTitle, department:emp.department, dateJoined:emp.dateJoined, entitlement: ent ? {year: state.year, ...ent} : undefined }) });
+    // Respect the year provided by the caller when saving entitlements
+    const entPayload = ent ? { year: (ent.year ?? state.year), carry: ent.carry, current: ent.current } : undefined;
+    const r = await fetch('/api/employee', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id:emp.id, name:emp.name, email:emp.email, role:emp.role, jobTitle:emp.jobTitle, department:emp.department, dateJoined:emp.dateJoined, entitlement: entPayload }) });
     if(!r.ok) throw new Error('Employee save failed');
   }
   async function apiDeleteEmployee(id){ const r = await fetch(`/api/employee-delete?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('Employee delete failed'); }
@@ -143,6 +145,24 @@
   async function apiCreateUser(email, name, role){ const r = await fetch('/api/users-create', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ email, name, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Create user failed'); } return (await r.json()).user; }
   async function apiDeleteUser(id){ const r = await fetch(`/api/users-delete?id=${encodeURIComponent(id)}`, { method:'DELETE' }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Delete user failed'); } }
   async function apiUpdateUserRole(id, role){ const r = await fetch('/api/users-update', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ id, role }) }); if(!r.ok){ const j = await r.json(); throw new Error(j.error || 'Update user failed'); } return (await r.json()).user; }
+
+  // Users cache to resolve who applied a leave (created_by)
+  let USERS_BY_ID = {};
+  async function ensureUsersCache(){
+    try{
+      const me = getCurrentUser();
+      if(!me || !['MANAGER','HR'].includes(me.role)) return; // employees don't need user list
+      // If already loaded, skip
+      if(Object.keys(USERS_BY_ID).length) return;
+      const list = await apiGetUsers();
+      USERS_BY_ID = Object.fromEntries((list||[]).map(u=>[u.id, u]));
+    }catch(e){ /* non-critical */ }
+  }
+  function userDisplayById(id){
+    const u = id && USERS_BY_ID[id];
+    if(!u) return id || '';
+    return u.name || u.email || id;
+  }
 
   async function refreshFromServer(){
     // Save scroll positions (window and calendar container) before re-rendering
@@ -197,6 +217,9 @@
     const tbody = document.querySelector('#reportLeavesTable tbody');
     if(!tbody) return;
     const user = getCurrentUser();
+    // Try to ensure we have a users cache for resolving created_by
+    // Fire and forget; rows fallback to raw id if not yet loaded
+    ensureUsersCache();
     let empId = state.selectedEmployee || '';
     if(!empId){
       if(user?.role === 'EMPLOYEE'){
@@ -207,7 +230,7 @@
       }
     }
     const year = state.year;
-    if(!empId){ tbody.innerHTML = '<tr><td colspan="8">No employee record mapped to your account.</td></tr>'; return; }
+    if(!empId){ tbody.innerHTML = '<tr><td colspan="9">No employee record mapped to your account.</td></tr>'; return; }
     const rows = (DB.leaves||[])
       .filter(l => l.employeeId===empId)
       // Always show PENDING items even if they are from another year,
@@ -218,9 +241,11 @@
         const tr = document.createElement('tr');
         const actionsAllowed = (user?.role==='MANAGER' || user?.role==='HR');
         const daysDisplay = l.isHalfDay ? `${l.days} (${l.session || 'N/A'})` : (l.days ?? workingDays(l.from,l.to));
+        const appliedBy = userDisplayById(l.createdBy || '');
         tr.innerHTML = actionsAllowed ? `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
+          <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
@@ -234,6 +259,7 @@
           </td>` : `
           <td>${l.type}</td>
           <td>${l.status||'PENDING'}</td>
+          <td>${appliedBy||''}</td>
           <td>${l.applied||''}</td>
           <td>${l.from||''}</td>
           <td>${l.to||''}</td>
@@ -719,26 +745,18 @@
         console.log(`${emp.name}: Year ${fromYear} - Entitlement: ${totals.entitlement}, Taken: ${totals.taken}, Balance: ${totals.balance}, Carry Amount: ${balance}`);
         
         if(balance > 0){
+          // Only auto-apply carry if the next year's carry has not been manually set yet.
+          // We detect this by checking the raw entitlements object for the presence of 'carry'.
+          const entObj = (emp.entitlements||{})[toYear];
+          const hasManualCarry = entObj && Object.prototype.hasOwnProperty.call(entObj, 'carry');
           const ent = getEntitlement(emp, toYear);
-          const currentCarry = ent.carry||0;
-          
-          // Check if carry from this specific year has already been applied
-          // by comparing if current carry matches what it should be (just the balance from this year)
-          const expectedCarry = balance; // Only the carry from this year pair, not accumulated
-          
-          console.log(`${emp.name}: Year ${toYear} - Before: carry=${currentCarry}, current=${ent.current||0}. Expected carry from ${fromYear}: ${expectedCarry}`);
-          
-          // Only set if it's not already correctly set (avoid duplicates)
-          if(currentCarry !== expectedCarry){
-            // If current carry is 0 or less than expected, set it to expected
-            // This handles the case where it hasn't been carried yet
-            if(currentCarry < expectedCarry){
-              setEntitlement(emp, toYear, expectedCarry, ent.current||0);
-              changes = true;
-              console.log(`${emp.name}: ✓ Set carry to ${expectedCarry}`);
-            }else{
-              console.log(`${emp.name}: ⊘ Carry already applied (${currentCarry} >= ${expectedCarry})`);
-            }
+          if(!hasManualCarry){
+            const expectedCarry = balance; // capped inside getCarryForwardBalance
+            console.log(`${emp.name}: Year ${toYear} - Auto-setting carry to ${expectedCarry} (no manual value present)`);
+            setEntitlement(emp, toYear, expectedCarry, ent.current||0);
+            changes = true;
+          }else{
+            console.log(`${emp.name}: Year ${toYear} - Skipping auto-carry (manual carry present: ${ent.carry||0})`);
           }
         }
       }
@@ -955,8 +973,8 @@
         if(isNew) DB.employees.push(emp);
         saveDB(DB);
         
-        // Save employee
-        await apiSaveEmployee(emp, { carry, current });
+        // Save employee with the selected entitlement year
+        await apiSaveEmployee(emp, { year: entYear, carry, current });
         
         // Save or update user if email is provided
         if(emp.email){
@@ -1664,11 +1682,11 @@
   function bindMaintenanceButtons(){
     const resetBtn = $('#resetCarryForwardBtn');
     if(resetBtn){
-      resetBtn.addEventListener('click', async ()=>{
-        if(confirm('This will reset all carry-forward values to correct amounts (max 5 days per year). Continue?')){
-          await resetCarryForward();
-        }
-      });
+      // Disabled: carry-forward changes should only occur via manual entitlement edits
+      resetBtn.disabled = true;
+      resetBtn.title = 'Disabled: carry-forward changes only via entitlement edits';
+      resetBtn.style.display = 'none';
+      return;
     }
   }
 
@@ -1894,12 +1912,16 @@
     }
     await bindAuthUI();
     bindUsers();  // Must be after bindAuthUI so user role is loaded
+    // Preload users cache (for MANAGER/HR) to resolve who applied leaves
+    await ensureUsersCache();
     
     // Sync fresh data from server before calculating carry-forward
     try{
       await refreshFromServer();
       // After loading fresh data, align selection to the current user
       ensureSelectedEmployeeForCurrentUser();
+      // Refresh users cache after data load as well
+      await ensureUsersCache();
     }catch(e){
       console.error('Initial sync failed:', e);
     }
@@ -1916,12 +1938,8 @@
     bindCloudSync();
     initRealtime();
     
-    // Auto-carry forward on app load if we're viewing 2024 or later
-    // This must run AFTER refreshFromServer so we have latest leave data
-    if(state.year >= 2024){
-      await autoCarryForward();
-      renderEmployees(); // Re-render to show updated carry-forward values
-    }
+    // Removed automatic carry-forward on app load.
+    // Carry-forward should only change when explicitly edited by a user.
   }
 
   // Kickoff
