@@ -18,7 +18,7 @@ body{
   color:var(--text);
   /* Site background image with dark overlay for readability */
   background:
-    linear-gradient(rgba(2,6,23,0.80), rgba(2,6,23,0.80)),
+    linear-gradient(rgba(2,6,23,0.55), rgba(2,6,23,0.55)),
     url('/assets/site-background.jpg') center / cover no-repeat fixed;
 }
 .app-header{
@@ -78,18 +78,18 @@ button.danger:hover{background:#dc2626}
 .tab{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 12px;color:var(--muted)}
 .tab.active{color:var(--text);background:#0b1220}
 
-.year-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:#0a0e14}
+.year-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:rgba(10,14,20,0.60);backdrop-filter:blur(4px)}
 .year-tab-nav{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;color:var(--muted);font-weight:600;cursor:pointer;transition:all 0.2s}
 .year-tab-nav:hover{border-color:var(--primary);color:var(--text)}
 .year-tab-nav.active{background:var(--primary);color:white;border-color:var(--primary)}
 
-.employee-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:#0a0e14;overflow-x:auto}
+.employee-tabs-nav{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #1f2937;background:rgba(10,14,20,0.60);backdrop-filter:blur(4px);overflow-x:auto}
 .employee-tab-nav{background:transparent;border:1px solid #334155;border-bottom:none;border-radius:8px 8px 0 0;padding:8px 16px;color:var(--muted);font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap}
 .employee-tab-nav:hover{border-color:var(--primary);color:var(--text)}
 .employee-tab-nav.active{background:var(--primary);color:white;border-color:var(--primary)}
 
 main{padding:16px;display:grid;gap:16px}
-.panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
+.panel{background:rgba(18,24,33,0.60);backdrop-filter:blur(4px);border:1px solid #1f2937;border-radius:12px;padding:16px}
 .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .controls,.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .controls>input,.controls>select{flex:1;min-width:120px}
