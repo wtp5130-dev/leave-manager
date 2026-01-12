@@ -1,3 +1,6 @@
+import { sql } from '@vercel/postgres';
+import { ensureSchema } from './db.js';
+
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
@@ -10,9 +13,9 @@ export default async function handler(req, res) {
   }
 }
 
-// TODO: replace with real data source
 async function getPendingApprovalsCount() {
-  // Example: query DB or internal API
-  // return await prisma.leaveRequest.count({ where: { status: 'PENDING' } });
-  return Number(process.env.PENDING_APPROVALS_COUNT || 0);
+  // Count leave requests with status PENDING
+  await ensureSchema();
+  const { rows } = await sql`SELECT COUNT(*)::int AS c FROM leaves WHERE status = 'PENDING'`;
+  return Number(rows?.[0]?.c || 0);
 }
