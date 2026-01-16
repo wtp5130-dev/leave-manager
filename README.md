@@ -13,6 +13,15 @@ Key features
 - Report: printable Staff Leave Card per employee and year
 - Import/Export JSON backup
 
+Company Hub stats endpoint
+- Backend exposes /api/stats for an external homepage/dashboard to consume.
+- Returns: { pendingApprovals, leavesNext14: [{ date: 'YYYY-MM-DD', names: [] }, ...] }.
+- Optional upcoming leaves source via env variables in Vercel:
+	- UPCOMING_LEAVES_URL: endpoint to fetch upcoming leaves from.
+	- UPCOMING_LEAVES_HEADERS (optional): JSON of headers, e.g. { "Authorization": "Bearer ..." }.
+- The leaves payload can be either an array or { leaves: [...] } and supports items with fields like start/end/date and name/employee/user.name. Ranges are expanded and filtered to the next 14 days.
+- Force refresh cache by visiting /api/stats?refresh=1.
+
 Cloud sync (Vercel Blob)
 Deprecated: the app now uses a database. The Sync button refreshes from the server.
 
