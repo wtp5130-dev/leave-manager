@@ -1,6 +1,7 @@
 import { sql } from '@vercel/postgres';
 import { ensureSchema, touchChange } from './db.js';
 import { broadcastChange } from './realtime.js';
+import { pushLeavesUpdates } from './hub-push.js';
 import { logAudit } from './audit-log.js';
 
 export const config = { runtime: 'nodejs' };
@@ -78,6 +79,19 @@ export default async function handler(req, res) {
         leaveType: l.type || null
       }
     });
+
+    // Push model: if status changed to approved/rejected, notify Hub stats-ingest
+    try {
+      if (l.status === 'APPROVED' || l.status === 'REJECTED') {
+        const { rows: empRows } = await sql`SELECT name, email FROM employees WHERE id=${l.employeeId} LIMIT 1`;
+        const emp = empRows?.[0] || {};
+        const status = String(l.status).toLowerCase() === 'approved' ? 'approved' : 'rejected';
+        const iso = (l.approvedAt || new Date().toISOString()).slice(0, 10);
+        await pushLeavesUpdates([
+          { date: iso, name: emp.name || '', email: emp.email || '', status }
+        ]);
+      }
+    } catch {}
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('leave endpoint error:', err);
